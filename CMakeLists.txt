@@ -12,7 +12,8 @@ link_directories(3p/usr/local/lib)
 
 set(${PROJECT_NAME}_sources
         src/graphics/nuklear.cpp
-        src/graphics/MainWindow.cpp
+        src/graphics/Window.cpp
+        src/Engine.cpp
         )
 
 add_executable(platformer main.cpp ${${PROJECT_NAME}_sources})

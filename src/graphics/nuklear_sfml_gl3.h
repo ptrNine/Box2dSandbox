@@ -13,21 +13,23 @@
 #ifndef NK_SFML_GL3_H_
 #define NK_SFML_GL3_H_
 
+#include <tuple>
+
 /* Feel free to edit here and include your own extension wrangler */
 #include <GL/glew.h>
 /* I use GLAD but you can use GLEW or what you like */
 
 #include <SFML/Window.hpp>
 
-NK_API struct nk_context*   nk_sfml_init(sf::Window* window);
-NK_API void                 nk_sfml_font_stash_begin(struct nk_font_atlas** atlas);
-NK_API void                 nk_sfml_font_stash_end(void);
-NK_API int                  nk_sfml_handle_event(sf::Event* event);
-NK_API void                 nk_sfml_render(enum nk_anti_aliasing, int max_vertex_buffer, int max_element_buffer);
-NK_API void                 nk_sfml_shutdown(void);
+NK_API auto   nk_sfml_init             (sf::Window* window) -> std::tuple<struct nk_context*, struct nk_sfml*>;
+NK_API void   nk_sfml_font_stash_begin (struct nk_sfml* sfml, struct nk_font_atlas** atlas);
+NK_API void   nk_sfml_font_stash_end   (struct nk_sfml* sfml);
+NK_API int    nk_sfml_handle_event     (struct nk_sfml* sfml, sf::Event* event);
+NK_API void   nk_sfml_render           (struct nk_sfml* sfml, enum nk_anti_aliasing, int max_vertex_buffer, int max_element_buffer);
+NK_API void   nk_sfml_shutdown         (struct nk_sfml* sfml);
 
-NK_API void                 nk_sfml_device_create(void);
-NK_API void                 nk_sfml_device_destroy(void);
+NK_API void   nk_sfml_device_create (struct nk_sfml* sfml);
+NK_API void   nk_sfml_device_destroy(struct nk_sfml* sfml);
 
 #endif
 /*
@@ -38,8 +40,6 @@ NK_API void                 nk_sfml_device_destroy(void);
  * ===============================================================
  */
 #ifdef NK_SFML_GL3_IMPLEMENTATION
-
-#include <cstring>
 
 struct nk_sfml_device {
     struct nk_buffer cmds;
@@ -60,12 +60,12 @@ struct nk_sfml_vertex {
     float uv[2];
     nk_byte col[4];
 };
-static struct nk_sfml {
+struct nk_sfml {
     sf::Window* window;
     struct nk_sfml_device ogl;
     struct nk_context ctx;
     struct nk_font_atlas atlas;
-} sfml;
+};
 
 #ifdef __APPLE__
   #define NK_SHADER_VERSION "#version 150\n"
@@ -74,7 +74,7 @@ static struct nk_sfml {
 #endif
 
 NK_API void
-nk_sfml_device_create(void)
+nk_sfml_device_create(struct nk_sfml* sfml)
 {
     GLint status;
     static const GLchar* vertex_shader =
@@ -101,7 +101,7 @@ nk_sfml_device_create(void)
         "   Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
         "}\n";
 
-    struct nk_sfml_device* dev = &sfml.ogl;
+    struct nk_sfml_device* dev = &sfml->ogl;
     nk_buffer_init_default(&dev->cmds);
 
     dev->prog = glCreateProgram();
@@ -161,9 +161,9 @@ nk_sfml_device_create(void)
 }
 
 NK_API void
-nk_sfml_device_destroy(void)
+nk_sfml_device_destroy(struct nk_sfml* sfml)
 {
-    struct nk_sfml_device* dev = &sfml.ogl;
+    struct nk_sfml_device* dev = &sfml->ogl;
 
     glDetachShader(dev->prog, dev->vert_shdr);
     glDetachShader(dev->prog, dev->frag_shdr);
@@ -177,9 +177,9 @@ nk_sfml_device_destroy(void)
 }
 
 NK_INTERN void
-nk_sfml_device_upload_atlas(const void* image, int width, int height)
+nk_sfml_device_upload_atlas(struct nk_sfml* sfml, const void* image, int width, int height)
 {
-    struct nk_sfml_device* dev = &sfml.ogl;
+    struct nk_sfml_device* dev = &sfml->ogl;
     glGenTextures(1, &dev->font_tex);
     glBindTexture(GL_TEXTURE_2D, dev->font_tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -189,12 +189,12 @@ nk_sfml_device_upload_atlas(const void* image, int width, int height)
 }
 
 NK_API void
-nk_sfml_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_buffer)
+nk_sfml_render(struct nk_sfml* sfml, enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_buffer)
 {
     /* setup global state */
-    struct nk_sfml_device* dev = &sfml.ogl;
-    int window_width = sfml.window->getSize().x;
-    int window_height = sfml.window->getSize().y;
+    struct nk_sfml_device* dev = &sfml->ogl;
+    int window_width = sfml->window->getSize().x;
+    int window_height = sfml->window->getSize().y;
     GLfloat ortho[4][4] = {
         {2.0f, 0.0f, 0.0f, 0.0f},
         {0.0f,-2.0f, 0.0f, 0.0f},
@@ -260,13 +260,13 @@ nk_sfml_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_
             struct nk_buffer vbuf, ebuf;
             nk_buffer_init_fixed(&vbuf, vertices, (nk_size)max_vertex_buffer);
             nk_buffer_init_fixed(&ebuf, elements, (nk_size)max_element_buffer);
-            nk_convert(&sfml.ctx, &dev->cmds, &vbuf, &ebuf, &config);
+            nk_convert(&sfml->ctx, &dev->cmds, &vbuf, &ebuf, &config);
         }
         glUnmapBuffer(GL_ARRAY_BUFFER);
         glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
 
         /* iterate over and execute each draw command */
-        nk_draw_foreach(cmd, &sfml.ctx, &dev->cmds)
+        nk_draw_foreach(cmd, &sfml->ctx, &dev->cmds)
         {
             if (!cmd->elem_count) continue;
             glBindTexture(GL_TEXTURE_2D, (GLuint)cmd->texture.id);
@@ -278,7 +278,7 @@ nk_sfml_render(enum nk_anti_aliasing AA, int max_vertex_buffer, int max_element_
             glDrawElements(GL_TRIANGLES, (GLsizei)cmd->elem_count, GL_UNSIGNED_SHORT, offset);
             offset += cmd->elem_count;
         }
-        nk_clear(&sfml.ctx);
+        nk_clear(&sfml->ctx);
     }
     glUseProgram(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -318,49 +318,50 @@ nk_sfml_clipboard_copy(nk_handle usr, const char* text, int len)
 #endif
 }
 
-NK_API struct nk_context*
+NK_API struct std::tuple<struct nk_context*, struct nk_sfml*>
 nk_sfml_init(sf::Window* window)
 {
-    sfml.window = window;
-    nk_init_default(&sfml.ctx, 0);
-    sfml.ctx.clip.copy = nk_sfml_clipboard_copy;
-    sfml.ctx.clip.paste = nk_sfml_clipboard_paste;
-    sfml.ctx.clip.userdata = nk_handle_ptr(0);
-    nk_sfml_device_create();
-    return &sfml.ctx;
+    auto sfml = new nk_sfml;
+    sfml->window = window;
+    nk_init_default(&sfml->ctx, 0);
+    sfml->ctx.clip.copy = nk_sfml_clipboard_copy;
+    sfml->ctx.clip.paste = nk_sfml_clipboard_paste;
+    sfml->ctx.clip.userdata = nk_handle_ptr(0);
+    nk_sfml_device_create(sfml);
+    return {&sfml->ctx, sfml};
 }
 
 NK_API void
-nk_sfml_font_stash_begin(struct nk_font_atlas** atlas)
+nk_sfml_font_stash_begin(struct nk_sfml* sfml, struct nk_font_atlas** atlas)
 {
-    nk_font_atlas_init_default(&sfml.atlas);
-    nk_font_atlas_begin(&sfml.atlas);
-    *atlas = &sfml.atlas;
+    nk_font_atlas_init_default(&sfml->atlas);
+    nk_font_atlas_begin(&sfml->atlas);
+    *atlas = &sfml->atlas;
 }
 
 NK_API void
-nk_sfml_font_stash_end()
+nk_sfml_font_stash_end(struct nk_sfml* sfml)
 {
     const void* image;
     int w, h;
-    image = nk_font_atlas_bake(&sfml.atlas, &w, &h, NK_FONT_ATLAS_RGBA32);
-    nk_sfml_device_upload_atlas(image, w, h);
-    nk_font_atlas_end(&sfml.atlas, nk_handle_id((int)sfml.ogl.font_tex), &sfml.ogl.null);
-    if(sfml.atlas.default_font)
-        nk_style_set_font(&sfml.ctx, &sfml.atlas.default_font->handle);
+    image = nk_font_atlas_bake(&sfml->atlas, &w, &h, NK_FONT_ATLAS_RGBA32);
+    nk_sfml_device_upload_atlas(sfml, image, w, h);
+    nk_font_atlas_end(&sfml->atlas, nk_handle_id((int)sfml->ogl.font_tex), &sfml->ogl.null);
+    if(sfml->atlas.default_font)
+        nk_style_set_font(&sfml->ctx, &sfml->atlas.default_font->handle);
 }
 
 NK_API int
-nk_sfml_handle_event(sf::Event* evt)
+nk_sfml_handle_event(struct nk_sfml* sfml, sf::Event* evt)
 {
-    struct nk_context* ctx = &sfml.ctx;
+    struct nk_context* ctx = &sfml->ctx;
     /* optional grabbing behavior */
     if(ctx->input.mouse.grab)
         ctx->input.mouse.grab = 0;
     else if(ctx->input.mouse.ungrab) {
         int x = (int)ctx->input.mouse.prev.x;
         int y = (int)ctx->input.mouse.prev.y;
-        sf::Mouse::setPosition(sf::Vector2i(x, y), *sfml.window);
+        sf::Mouse::setPosition(sf::Vector2i(x, y), *sfml->window);
         ctx->input.mouse.ungrab = 0;
     }
     if(evt->type == sf::Event::KeyReleased || evt->type == sf::Event::KeyPressed)
@@ -452,12 +453,12 @@ nk_sfml_handle_event(sf::Event* evt)
 }
 
 NK_API
-void nk_sfml_shutdown()
+void nk_sfml_shutdown(struct nk_sfml* sfml)
 {
-    nk_font_atlas_clear(&sfml.atlas);
-    nk_free(&sfml.ctx);
-    nk_sfml_device_destroy();
-    memset(&sfml, 0, sizeof(sfml));
+    nk_font_atlas_clear(&sfml->atlas);
+    nk_free(&sfml->ctx);
+    nk_sfml_device_destroy(sfml);
+    delete sfml;
 }
 
 #endif
