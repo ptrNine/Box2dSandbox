@@ -6,6 +6,7 @@
 
 #include "nuklear.hpp"
 
+#include "Camera.hpp"
 #include "../Engine.hpp"
 
 #define MAX_VERTEX_BUFFER  512 * 1024
@@ -14,7 +15,7 @@
 
 Window::Window() {
     _settings = std::make_unique<sf::ContextSettings>(24, 8, 4);
-    _wnd      = std::make_unique<sf::RenderWindow>(sf::VideoMode(800, 600), "Test", sf::Style::Default, *_settings);
+    _wnd      = std::make_unique<sf::RenderWindow>(sf::VideoMode(1600, 900), "Test", sf::Style::Default, *_settings);
 
     _wnd->setVerticalSyncEnabled(true);
     _wnd->setActive(true);
@@ -47,7 +48,7 @@ void Window::run() {
     while (_wnd->isOpen()) {
         eventUpdate();
 
-        if (_wnd->isOpen())
+        if (!_wnd->isOpen())
             break;
 
         render();
@@ -65,32 +66,57 @@ void Window::eventUpdate() {
         else if (evt.type == sf::Event::Resized)
             glViewport(0, 0, evt.size.width, evt.size.height);
 
+        nk_sfml_handle_event(_nksfml, &evt);
+
+        if ((evt.type == sf::Event::MouseButtonPressed || evt.type == sf::Event::MouseButtonReleased) && nk_item_is_any_active(_ctx))
+            continue;
+
+
+        // Update cameras callbacks
+        for (auto& camera : _cameras)
+            camera->updateEvents(*this, evt);
 
         // Call all event callbacks
         for (auto &cb : _event_callbacks)
-            cb.second(evt);
-
-
-        nk_sfml_handle_event(_nksfml, &evt);
+            cb.second(*this, evt);
     }
 
     nk_input_end(_ctx);
 }
 
+void Window::update(float delta_time) {
+    for (auto& camera : _cameras)
+        camera->updateRegular(delta_time);
+}
 
 void Window::render() {
     // Call all ui callbacks
     for (auto& cb : _ui_callbacks)
-        cb.second(_ctx);
+        cb.second(*this, _ctx);
 
-    _wnd->clear(sf::Color(25, 25, 25));
+    _wnd->clear(sf::Color(25, 25, 50));
 
-    if (_drawable_manager) {
-        for (auto drawable : *_drawable_manager)
-            _wnd->draw(*drawable);
+    auto default_view = _wnd->getView();
+
+    for (auto& camera : _cameras) {
+        _wnd->setView(camera->_view);
+
+        if (camera->_drawable_manager) {
+            for (auto drawable : *camera->_drawable_manager) {
+                _wnd->draw(*drawable);
+            }
+        }
     }
 
-    nk_sfml_render(_nksfml, NK_ANTI_ALIASING_ON, MAX_VERTEX_BUFFER, MAX_ELEMENT_BUFFER);
+    if (_drawable_manager) {
+        _wnd->setView(default_view);
+
+        for (auto drawable : *_drawable_manager) {
+            _wnd->draw(*drawable);
+        }
+    }
+
+    nk_sfml_render(_nksfml, NK_ANTI_ALIASING_OFF, MAX_VERTEX_BUFFER, MAX_ELEMENT_BUFFER);
     _wnd->display();
 }
 
@@ -106,4 +132,14 @@ void Window::close() {
 void Window::is_visible(bool value) {
     _wnd->setVisible(value);
     _is_visible = value;
+}
+
+auto Window::getCurrentCoords() -> sf::Vector2f {
+    auto pos = _wnd->mapPixelToCoords(sf::Mouse::getPosition(*_wnd));
+    pos.y = -pos.y;
+    return pos;
+}
+
+void Window::setSize(uint32_t x, uint32_t y) {
+    _wnd->setSize(sf::Vector2u(x, y));
 }

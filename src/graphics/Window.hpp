@@ -21,14 +21,17 @@ namespace sf {
     class RenderTarget;
 }
 
+class Camera;
+
 using WindowP           = std::unique_ptr<sf::RenderWindow>;
 using SettingsP         = std::unique_ptr<sf::ContextSettings>;
 using DrawableManagerSP = std::shared_ptr<DrawableManager>;
+using CameraSP          = std::shared_ptr<Camera>;
 
 class Window {
 public:
-    using UiCallbackT    = std::function<void(NkCtx*)>;
-    using EventCallbackT = std::function<void(const sf::Event&)>;
+    using UiCallbackT    = std::function<void(Window&, NkCtx*)>;
+    using EventCallbackT = std::function<void(Window&, const sf::Event&)>;
 
 public:
     Window();
@@ -37,6 +40,7 @@ public:
     void run();
     void eventUpdate();
     void render();
+    void update(float delta_time);
 
     void addUiCallback(const std::string& name, const UiCallbackT& callback) {
         _ui_callbacks.emplace(name, callback);
@@ -66,15 +70,22 @@ public:
         return res;
     }
 
-    auto drawable_manager() -> DrawableManagerSP {
-        return _drawable_manager;
+    void addCamera(const CameraSP& camera) {
+        _cameras.emplace(camera);
     }
+
+    auto detachCamera(const CameraSP& camera) {
+        return _cameras;
+    }
+
+    auto getCurrentCoords() -> sf::Vector2f;
 
     bool isOpen    ();
     void close     ();
     bool is_visible() { return _is_visible; }
     void is_visible(bool value);
 
+    void setSize(uint32_t x, uint32_t y);
 
 private:
     NkCtx*       _ctx;
@@ -87,4 +98,5 @@ private:
     ska::flat_hash_map<std::string, UiCallbackT>    _ui_callbacks;
     ska::flat_hash_map<std::string, EventCallbackT> _event_callbacks;
     DrawableManagerSP _drawable_manager;
+    ska::flat_hash_set<CameraSP> _cameras;
 };

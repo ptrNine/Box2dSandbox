@@ -204,6 +204,9 @@ nk_sfml_render(struct nk_sfml* sfml, enum nk_anti_aliasing AA, int max_vertex_bu
     ortho[0][0] /= (GLfloat)window_width;
     ortho[1][1] /= (GLfloat)window_height;
 
+    auto blend_enabled = glIsEnabled(GL_BLEND);
+    auto scissor_test_enabled = glIsEnabled(GL_SCISSOR_TEST);
+
     glViewport(0, 0, window_width, window_height);
     glEnable(GL_BLEND);
     glBlendEquation(GL_FUNC_ADD);
@@ -284,8 +287,12 @@ nk_sfml_render(struct nk_sfml* sfml, enum nk_anti_aliasing AA, int max_vertex_bu
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-    glDisable(GL_BLEND);
-    glDisable(GL_SCISSOR_TEST);
+
+    if (!blend_enabled)
+        glDisable(GL_BLEND);
+
+    if (!scissor_test_enabled)
+        glDisable(GL_SCISSOR_TEST);
 }
 
 static void

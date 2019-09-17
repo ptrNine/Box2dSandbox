@@ -14,6 +14,11 @@ set(${PROJECT_NAME}_sources
         src/graphics/nuklear.cpp
         src/graphics/Window.cpp
         src/Engine.cpp
+        src/graphics/Camera.cpp
+        src/graphics/CameraManipulator.cpp
+        src/game/PhysicSimulation.cpp
+        src/core/time.cpp
+        src/gameMain.cpp
         )
 
 add_executable(platformer main.cpp ${${PROJECT_NAME}_sources})
