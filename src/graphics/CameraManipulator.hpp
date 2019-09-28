@@ -2,20 +2,21 @@
 
 #include <functional>
 #include <memory>
+#include "../core/helper_macros.hpp"
 
 namespace sf {
     class Event;
 }
 
-class Camera;
-
 class CameraManipulator {
-    friend Camera;
+    friend class Camera;
 
-    using EventCallback   = std::function<void(class CameraManipulator&, const sf::Event&, const class Window&)>;
-    using RegularCallback = std::function<void(class CameraManipulator&, float delta_time)>;
+    using EventCallback   = std::function<void(class CameraManipulator&, class Camera&, const sf::Event&)>;
+    using RegularCallback = std::function<void(class CameraManipulator&, class Camera&, float delta_time)>;
 
 public:
+    DEFINE_SELF_FABRICS(CameraManipulator)
+
     void attachEventCallback(const EventCallback& callback) {
         _event_callback = callback;
     }
@@ -44,21 +45,18 @@ public:
         return _regular_callback;
     }
 
-    Camera& camera();
-
 private:
-    void updateEvents(const class Window& wnd, const sf::Event& evt) {
+    void updateEvents(class Camera& camera, const sf::Event& evt) {
         if (_event_callback)
-            _event_callback(*this, evt, wnd);
+            _event_callback(*this, camera, evt);
     }
 
-    void updateRegular(float delta_time) {
+    void updateRegular(class Camera& camera, float delta_time) {
         if (_regular_callback)
-            _regular_callback(*this, delta_time);
+            _regular_callback(*this, camera, delta_time);
     }
 
 private:
-    Camera*         _camera = nullptr;
     EventCallback   _event_callback;
     RegularCallback _regular_callback;
 

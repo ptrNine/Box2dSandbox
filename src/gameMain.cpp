@@ -4,30 +4,24 @@
 #include "graphics/Camera.hpp"
 #include "EngineState.hpp"
 #include "core/ftl/vector2.hpp"
+#include "graphics/CameraManipulator.hpp"
 
 void Engine::gameMain() {
 
-    auto wnd = window_manager.create<Window>();
-    auto drawable_manager = std::make_shared<DrawableManager>("Drawable manager");
+    auto wnd = Window::createShared();
+    addWindow(wnd);
 
-    auto camera = std::make_shared<Camera>("Camera1", 16.f/9.f, 20.f);
+    auto drawable_manager = DrawableManager::createShared("Drawable manager");
+
+    auto camera = Camera::createShared("Camera1", 16.f/9.f, 20.f);
     camera->attachDrawableManager(drawable_manager);
     wnd->addCamera(camera);
 
-    //auto wnd2 = window_manager.create<Window>();
-    auto camera2 = std::make_shared<Camera>("Camera2", 4.f/9.f, 20.f);
-    camera2->attachDrawableManager(drawable_manager);
-    wnd->addCamera(camera2);
+    auto camera_manipulator = CameraManipulator::createShared();
+    camera->attachCameraManipulator(camera_manipulator);
 
-    camera->setViewport(0.f, 0.25f, 0.75f, 0.75f);
-    camera2->setViewport(0.75f, 0.0f, 0.25f, 1.f);
-
-    //wnd2->setSize(400, 900);
-    //wnd2->addCamera(camera2);
-
-    camera->camera_manipulator().attachEventCallback([](CameraManipulator& it, const sf::Event& evt, const Window&) {
+    camera_manipulator->attachEventCallback([](CameraManipulator& it, Camera& cam, const sf::Event& evt) {
         float speed = 1.0f;
-        auto& cam = it.camera();
 
         if (evt.type == sf::Event::KeyPressed) {
             if (evt.key.code == sf::Keyboard::A)
@@ -47,7 +41,7 @@ void Engine::gameMain() {
     });
 
 
-    physic_simulation = std::make_unique<PhysicSimulation>();
+    physic_simulation = PhysicSimulation::createUnique();
     physic_simulation->debug_draw(true);
     physic_simulation->attachDrawableManager(drawable_manager);
 
@@ -79,13 +73,18 @@ void Engine::gameMain() {
                 auto iters2 = physic_simulation->velocity_iters();
 
                 physic_simulation = nullptr;
-                physic_simulation = std::make_unique<PhysicSimulation>();
+                physic_simulation = PhysicSimulation::createUnique();
                 physic_simulation->debug_draw(debug_draw);
                 physic_simulation->step_time(freq);
                 physic_simulation->position_iters(iters1);
                 physic_simulation->velocity_iters(iters2);
                 physic_simulation->attachDrawableManager(drawable_manager);
                 physic_simulation->on_pause(pause);
+            }
+
+            nk_layout_row_dynamic(ctx, 25, 1);
+            if (nk_button_label(ctx, "Step")) {
+                physic_simulation->step();
             }
 
             static int on_pause = physic_simulation->on_pause();

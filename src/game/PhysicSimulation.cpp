@@ -56,7 +56,7 @@ PhysicSimulation::~PhysicSimulation() {
 }
 
 
-void PhysicSimulation::step() {
+void PhysicSimulation::update() {
     if (_on_pause) {
         _last_update_time = timer().timestamp();
         return;
@@ -68,13 +68,19 @@ void PhysicSimulation::step() {
     auto current_time = timer().timestamp();
 
     if ((current_time - _last_update_time).sec() > _step_time) {
-        _world->Step(_step_time, _velocity_iters, _position_iters);
-
-        if (_debug_draw)
-            updateDebugDraw();
-
+        step();
         _last_update_time = current_time;
     }
+}
+
+void PhysicSimulation::step() {
+    if (!_world)
+        return;
+
+    _world->Step(_step_time, _velocity_iters, _position_iters);
+
+    if (_debug_draw)
+        updateDebugDraw();
 }
 
 

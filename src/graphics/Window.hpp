@@ -30,6 +30,7 @@ using CameraSP          = std::shared_ptr<Camera>;
 
 class Window {
 public:
+    DEFINE_SELF_FABRICS(Window)
     using UiCallbackT    = std::function<void(Window&, NkCtx*)>;
     using EventCallbackT = std::function<void(Window&, const sf::Event&)>;
 
@@ -74,8 +75,8 @@ public:
         _cameras.emplace(camera);
     }
 
-    auto detachCamera(const CameraSP& camera) {
-        return _cameras;
+    void removeCamera(const CameraSP& camera) {
+        _cameras.erase(camera);
     }
 
     auto getCurrentCoords() -> sf::Vector2f;
@@ -88,6 +89,7 @@ public:
     void setSize(uint32_t x, uint32_t y);
 
 private:
+
     NkCtx*       _ctx;
     NkSfml*      _nksfml;
     NkFontAtlas* _font_atlas;
@@ -97,6 +99,7 @@ private:
 
     ska::flat_hash_map<std::string, UiCallbackT>    _ui_callbacks;
     ska::flat_hash_map<std::string, EventCallbackT> _event_callbacks;
+
     DrawableManagerSP _drawable_manager;
     ska::flat_hash_set<CameraSP> _cameras;
 };

@@ -3,6 +3,7 @@
 #include <mutex>
 
 #include <flat_hash_map.hpp>
+#include <memory>
 
 #include "../graphics/DrawableManager.hpp"
 
@@ -26,6 +27,8 @@ class PhysicSimulation {
     B2WorldUP         _world;
 
 public:
+    DEFINE_SELF_FABRICS(PhysicSimulation)
+
     PhysicSimulation();
     ~PhysicSimulation();
 
@@ -34,6 +37,7 @@ public:
 
     void spawnBox(float x, float y);
 
+    void update();
     void step();
 
 private:

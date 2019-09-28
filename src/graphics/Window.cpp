@@ -72,8 +72,9 @@ void Window::eventUpdate() {
             continue;
 
 
+        auto _camera_safe_copy = std::vector(_cameras.begin(), _cameras.end());
         // Update cameras callbacks
-        for (auto& camera : _cameras)
+        for (auto& camera : _camera_safe_copy)
             camera->updateEvents(*this, evt);
 
         // Call all event callbacks

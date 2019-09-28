@@ -3,9 +3,15 @@ project(platformer)
 
 set(CMAKE_CXX_STANDARD 17)
 
+set(CMAKE_PREFIX_PATH "3p/usr/local/")
 set(SFML_DIR "3p/usr/local/lib/cmake/SFML")
 find_package(SFML 2.5 REQUIRED COMPONENTS system window graphics network audio)
 set(SFML_LIBS sfml-system sfml-window sfml-graphics sfml-network sfml-audio)
+
+find_package(SCM REQUIRED)
+include(${SCM_USE_FILE})
+
+find_package(fmt REQUIRED)
 
 include_directories(3p/usr/local/include)
 link_directories(3p/usr/local/lib)
@@ -23,4 +29,4 @@ set(${PROJECT_NAME}_sources
 
 add_executable(platformer main.cpp ${${PROJECT_NAME}_sources})
 
-target_link_libraries(platformer ${SFML_LIBS} GL GLEW Box2D -pthread)
+target_link_libraries(platformer ${SFML_LIBS} GL GLEW Box2D -pthread ${SCM_STATIC_LIBRARIES} fmt)

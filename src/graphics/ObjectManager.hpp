@@ -4,6 +4,9 @@
 //#include <flat_hash_map.hpp>
 #include <unordered_map>
 #include <unordered_set>
+#include <memory>
+
+#include "../core/helper_macros.hpp"
 
 template <typename ObjectT, typename AttribT = void, class Enable = void>
 class ObjectManager;
@@ -15,6 +18,8 @@ class ObjectManager;
 template <typename ObjectT, typename AttribT>
 class ObjectManager <ObjectT, AttribT, std::enable_if_t<std::is_same_v<AttribT, void>>> {
 public:
+    DEFINE_SELF_FABRICS(ObjectManager)
+
     ObjectManager           (const ObjectManager<ObjectT, AttribT>&) = delete;
     ObjectManager& operator=(const ObjectManager<ObjectT, AttribT>&) = delete;
 

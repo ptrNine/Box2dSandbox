@@ -10,12 +10,14 @@
 class Window;
 class PhysicSimulation;
 
+
+struct WindowParams {
+    bool destroy_on_close = true;
+};
+
+
 class Engine {
 public:
-    struct WindowParams {
-        bool destroy_on_close = true;
-    };
-
     using WindowManager = ObjectManager<Window, WindowParams>;
 
 public:
@@ -27,15 +29,12 @@ public:
 private:
     void onCreate();
     void mainUpdate();
-
     void gameMain();
 
+    void addWindow   (const std::shared_ptr<Window>& window, const WindowParams& params = WindowParams());
+    void removeWindow(const std::shared_ptr<Window>& window);
+
 private:
-    WindowManager window_manager;
+    ska::flat_hash_map<std::shared_ptr<Window>, WindowParams> _windows;
     std::unique_ptr<PhysicSimulation> physic_simulation;
 };
-
-
-//inline auto& engine() {
-//    return Engine::instance();
-//}

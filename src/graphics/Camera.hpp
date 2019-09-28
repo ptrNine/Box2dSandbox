@@ -3,21 +3,26 @@
 #include <functional>
 #include <SFML/Graphics/Transform.hpp>
 #include <SFML/Graphics/View.hpp>
+
 #include "DrawableManager.hpp"
-#include "CameraManipulator.hpp"
+#include "../core/helper_macros.hpp"
 
 namespace sf {
     class Event;
 }
 
+class CameraManipulator;
+
 class Camera {
 public:
     friend class Window;
 
-    using DrawableManagerSP = std::shared_ptr<DrawableManager>;
-    using EventCallback = std::function<void(Camera&, const sf::Event&, const class Window&)>;
+    using DrawableManagerSP   = std::shared_ptr<DrawableManager>;
+    using CameraManipulatorSP = std::shared_ptr<CameraManipulator>;
+    using EventCallback       = std::function<void(Camera&, const sf::Event&, const class Window&)>;
 
 public:
+    DEFINE_SELF_FABRICS(Camera)
 
     Camera(const std::string_view& name = "",
            float aspect_ratio = 16.f/9.f,
@@ -26,7 +31,6 @@ public:
     {
         _view.setSize(_eye_width, _eye_width / _aspect_ratio);
         _view.setCenter(0.f, 0.f);
-        _manipulator._camera = this;
     }
 
     ~Camera() {
@@ -49,11 +53,19 @@ public:
         return _drawable_manager;
     }
 
-    void setCameraManipulator(const CameraManipulator& camera_manipulator) {
+    void attachCameraManipulator(const CameraManipulatorSP& camera_manipulator) {
         _manipulator = camera_manipulator;
     }
 
-    auto& camera_manipulator() {
+    auto detachCameraManipulator() {
+        CameraManipulatorSP res = _manipulator;
+
+        _manipulator = nullptr;
+
+        return res;
+    }
+
+    auto camera_manipulator() {
         return _manipulator;
     }
 
@@ -107,13 +119,8 @@ private:
     }
 
     // Call from window
-    void updateEvents(const class Window& wnd, const sf::Event& evt) {
-        _manipulator.updateEvents(wnd, evt);
-    }
-
-    void updateRegular(float delta_time) {
-        _manipulator.updateRegular(delta_time);
-    }
+    void updateEvents (const class Window& wnd, const sf::Event& evt);
+    void updateRegular(float delta_time);
 
 private:
     sf::View          _view;
@@ -123,5 +130,5 @@ private:
     float             _eye_width = 10;
 
     // Todo: use smart pointer for this!
-    CameraManipulator _manipulator;
+    CameraManipulatorSP _manipulator;
 };
