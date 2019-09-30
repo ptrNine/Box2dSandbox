@@ -45,6 +45,16 @@ namespace nnw {
             return std::uniform_real_distribution<FloatT>(min, max)(_mt);
         }
 
+        template <typename T>
+        auto uniform_dist(T min, T max) -> std::enable_if_t<std::is_integral_v<T>, T> {
+            return std::uniform_int_distribution<T>(min, max)(_mt);
+        }
+
+        template <typename T>
+        auto uniform_dist(T min, T max) -> std::enable_if_t<std::is_floating_point_v<T>, T> {
+            return std::uniform_real_distribution<T>(min, max)(_mt);
+        }
+
     private:
         GlobalStateHelper() : _mt(static_cast<size_t>(std::time(nullptr))) {}
         ~GlobalStateHelper() = default;
@@ -65,6 +75,11 @@ namespace nnw {
 
         inline auto next_rand(FloatT min, FloatT max) {
             return GlobalStateHelper::instance().next_rand(min, max);
+        }
+
+        template <typename T>
+        T uniform_dist(T min, T max) {
+            return GlobalStateHelper::instance().uniform_dist(min, max);
         }
     }
 
@@ -94,37 +109,47 @@ namespace nnw {
     }
     
     namespace activation_funcs {
-        FloatT identity(FloatT x) {
+        inline FloatT identity(FloatT x) {
             return x;
         }
 
-        FloatT sigmoid(FloatT x) {
-            return 1.0f / (1.0f + std::exp(-x));
+        inline FloatT sigmoid(FloatT x) {
+            return 1 / (1 + std::exp(-x));
         }
 
-        FloatT relu(FloatT x) {
-            return x >= 0.0 ? x : 0;
+        inline FloatT relu(FloatT x) {
+            return x >= 0 ? x : 0;
         }
 
-        FloatT leaky_relu(FloatT x, FloatT alpha = 0.1) {
-            return x >= 0.0 ? x : alpha * x;
+        inline FloatT leaky_relu(FloatT x, FloatT alpha = 0.01) {
+            return x >= 0 ? x : alpha * x;
         }
+
+        inline FloatT elu(FloatT x, FloatT alpha = 0.01) {
+            return x >= 0 ? x : alpha * (std::exp(x) - 1);
+        }
+
 
         namespace derivative {
-            FloatT identity(FloatT) {
+            inline FloatT identity(FloatT) {
                 return 1;
             }
 
-            FloatT sigmoid(FloatT x) {
-                return (1 - x) * x;
+            inline FloatT sigmoid(FloatT x) {
+                auto fx = 1 / (1 + std::exp(-x));
+                return (1 - fx) * fx;
             }
 
-            FloatT relu(FloatT x) {
-                return x >= 0.0 ? 1 : 0;
+            inline FloatT relu(FloatT x) {
+                return x >= 0 ? 1 : 0;
             }
 
-            FloatT leaky_relu(FloatT x, FloatT alpha = 0.1) {
-                return x >= 0.0 ? 1 : alpha;
+            inline FloatT leaky_relu(FloatT x, FloatT alpha = 0.01) {
+                return x >= 0 ? 1 : alpha;
+            }
+
+            inline FloatT elu(FloatT x, FloatT alpha = 0.01) {
+                return x >= 0 ? 1 : activation_funcs::elu(x, 0.01) + alpha;
             }
         }
 
@@ -140,9 +165,14 @@ namespace nnw {
             return ActivationFunc{.normal = relu, .derivative = derivative::relu};
         }
 
-        inline auto LeakyRelu(FloatT alpha = 0.1) {
+        inline auto LeakyRelu(FloatT alpha = 0.01) {
             return ActivationFunc{.normal     = [alpha](FloatT x) { return leaky_relu(x, alpha); },
                                   .derivative = [alpha](FloatT x) { return derivative::leaky_relu(x, alpha); }
+            };
+        }
+        inline auto Elu(FloatT alpha = 0.01) {
+            return ActivationFunc{.normal     = [alpha](FloatT x) { return elu(x, alpha); },
+                                  .derivative = [alpha](FloatT x) { return derivative::elu(x, alpha); }
             };
         }
     } // namespace activation_funcs
@@ -313,6 +343,18 @@ namespace nnw {
                 }
             }
 
+            // Softmax regression
+
+            //FloatT sum = 0;
+            //for (auto neuron_idx : _layers.back())
+            //    sum += std::exp(_neurons[neuron_idx]._output);
+//
+            //for (auto neuron_idx : _layers.back())
+            //    _neurons[neuron_idx]._output = std::exp(_neurons[neuron_idx]._output) / sum;
+
+            // !Softmax regression
+
+
             auto output = std::vector<FloatT>();
             output.reserve(_layers.back().size());
 
@@ -343,7 +385,7 @@ namespace nnw {
             for (size_t i = 0; i < ideal.size(); ++i) {
                 auto& neuron = _neurons[_layers.back()[i]];
 
-                auto delta = (ideal[i] - neuron._output) * neuron.derivative_output();
+                auto delta = (ideal[i] - neuron._output) * neuron.derivative_output(); // softmax (neuron._output * (1 - neuron._output))
                 neuron._input = delta; // input become delta
             }
 
@@ -357,7 +399,7 @@ namespace nnw {
                             auto &synapse = _synapses[synapse_idx];
                             auto &next_neuron = _neurons[synapse._forward_idx];
 
-                            sigma += synapse.weight * next_neuron._input;
+                            sigma += synapse.weight * next_neuron._input; // w * delta
                         }
 
                         auto delta = neuron.derivative_output() * sigma;
@@ -414,6 +456,22 @@ namespace nnw {
 
         size_t epoch() {
             return _epoch;
+        }
+
+        void set_learning_rate(FloatT value) {
+            _learning_rate = value;
+        }
+
+        FloatT learning_rate() {
+            return _learning_rate;
+        }
+
+        void set_momentum(FloatT value) {
+            _momentum = value;
+        }
+
+        FloatT momentum() {
+            return _momentum;
         }
 
 
