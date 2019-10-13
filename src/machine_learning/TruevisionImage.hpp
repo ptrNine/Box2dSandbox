@@ -2,6 +2,7 @@
 
 #include <string>
 #include <cstring>
+#include <vector>
 
 #include "SimpleSerializer.hpp"
 
@@ -21,7 +22,7 @@ namespace nnw {
 
     struct ColorFloat24 {
         static FloatT clamp(FloatT in) {
-            return std::clamp(in, FloatT(0), FloatT(1));
+            return in > FloatT(1.0) ? FloatT(1.0) : (in < FloatT(0.0) ? FloatT(0.0) : in);
         }
         ColorFloat24() = default;
         ColorFloat24(const Color24& c): r(c.r / 255.f), g(c.g / 255.f), b(c.b / 255.f) {}
@@ -194,7 +195,7 @@ namespace nnw {
             serializer.push('.');
             serializer.push<uint8_t>(0);
 
-            serializer.write(path);
+            serializer.save_to(path);
         }
 
         operator bool() const {

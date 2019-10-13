@@ -80,7 +80,7 @@ namespace nnw {
                 sr.push('\n');
             }
 
-            sr.write(dir + "digit-labels.txt");
+            sr.save_to(dir + "digit-labels.txt");
         }
 
     private:

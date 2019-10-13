@@ -1,518 +1,14 @@
 #pragma once
 
-#include <vector>
-#include <functional>
-#include <cmath>
-#include <memory>
-#include <random>
-#include <ctime>
-#include <iostream>
 #include <unordered_set>
 
+#include "details/Types.hpp"
+#include "details/Exception.hpp"
+#include "Initializers.hpp"
+#include "FeedForwardNeuralNetwork.hpp"
+
+
 namespace nnw {
-    using FloatT  = float;
-    using StringT = std::string;
-
-
-    class Exception : public std::exception {
-    public:
-        explicit Exception(const StringT& error) : _exc(error.data()) {}
-        const char* what() const noexcept override { return _exc.data(); }
-    private:
-        StringT _exc;
-    };
-
-
-    class GlobalStateHelper {
-    public:
-        GlobalStateHelper(const GlobalStateHelper&) = delete;
-        GlobalStateHelper& operator= (const GlobalStateHelper&) = delete;
-
-        static auto& instance() {
-            static GlobalStateHelper _inst;
-            return _inst;
-        }
-
-        auto get_neuron_id() {
-            return ++_current_neuron;
-        }
-
-        auto get_synapse_id() {
-            return ++_current_synapse;
-        }
-
-        FloatT next_rand(FloatT min, FloatT max) {
-            return std::uniform_real_distribution<FloatT>(min, max)(_mt);
-        }
-
-        template <typename T>
-        auto uniform_dist(T min, T max) -> std::enable_if_t<std::is_integral_v<T>, T> {
-            return std::uniform_int_distribution<T>(min, max)(_mt);
-        }
-
-        template <typename T>
-        auto uniform_dist(T min, T max) -> std::enable_if_t<std::is_floating_point_v<T>, T> {
-            return std::uniform_real_distribution<T>(min, max)(_mt);
-        }
-
-    private:
-        GlobalStateHelper() : _mt(static_cast<size_t>(std::time(nullptr))) {}
-        ~GlobalStateHelper() = default;
-
-        size_t _current_neuron  = 0;
-        size_t _current_synapse = 0;
-        std::mt19937 _mt;
-    };
-
-    namespace helper {
-        inline auto next_neuron_name() {
-            return StringT("Nrn_") + StringT(std::to_string(GlobalStateHelper::instance().get_neuron_id()));
-        }
-
-        inline auto next_synapse_name() {
-            return StringT("Snp_") + StringT(std::to_string(GlobalStateHelper::instance().get_synapse_id()));
-        }
-
-        inline auto next_rand(FloatT min, FloatT max) {
-            return GlobalStateHelper::instance().next_rand(min, max);
-        }
-
-        template <typename T>
-        T uniform_dist(T min, T max) {
-            return GlobalStateHelper::instance().uniform_dist(min, max);
-        }
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////
-    ///                        Activation functions
-    ///////////////////////////////////////////////////////////////////////////
-    
-    struct ActivationFunc {
-        std::function<FloatT(FloatT)> normal, derivative;
-    };
-
-    enum class InitializerStrategy {
-        ReluStandart, Xavier
-    };
-
-    namespace initializers {
-
-        FloatT relu_standart(size_t inputs) {
-            return helper::next_rand(0, inputs) * std::sqrt(FloatT(2.0)/inputs);
-        }
-
-        FloatT xavier_init(size_t inputs_and_outputs) {
-            FloatT u = std::sqrt(FloatT(6)) / std::sqrt(FloatT(inputs_and_outputs));
-            return helper::next_rand(-u, u);
-        }
-    }
-    
-    namespace activation_funcs {
-        inline FloatT identity(FloatT x) {
-            return x;
-        }
-
-        inline FloatT sigmoid(FloatT x) {
-            return 1 / (1 + std::exp(-x));
-        }
-
-        inline FloatT relu(FloatT x) {
-            return x >= 0 ? x : 0;
-        }
-
-        inline FloatT leaky_relu(FloatT x, FloatT alpha = 0.01) {
-            return x >= 0 ? x : alpha * x;
-        }
-
-        inline FloatT elu(FloatT x, FloatT alpha = 0.01) {
-            return x >= 0 ? x : alpha * (std::exp(x) - 1);
-        }
-
-
-        namespace derivative {
-            inline FloatT identity(FloatT) {
-                return 1;
-            }
-
-            inline FloatT sigmoid(FloatT x) {
-                auto fx = 1 / (1 + std::exp(-x));
-                return (1 - fx) * fx;
-            }
-
-            inline FloatT relu(FloatT x) {
-                return x >= 0 ? 1 : 0;
-            }
-
-            inline FloatT leaky_relu(FloatT x, FloatT alpha = 0.01) {
-                return x >= 0 ? 1 : alpha;
-            }
-
-            inline FloatT elu(FloatT x, FloatT alpha = 0.01) {
-                return x >= 0 ? 1 : activation_funcs::elu(x, 0.01) + alpha;
-            }
-        }
-
-        inline auto Identity() {
-            return ActivationFunc{.normal = identity, .derivative = derivative::identity};
-        }
-
-        inline auto Sigmoid() {
-            return ActivationFunc{.normal = sigmoid, .derivative = derivative::sigmoid};
-        }
-
-        inline auto Relu() {
-            return ActivationFunc{.normal = relu, .derivative = derivative::relu};
-        }
-
-        inline auto LeakyRelu(FloatT alpha = 0.01) {
-            return ActivationFunc{.normal     = [alpha](FloatT x) { return leaky_relu(x, alpha); },
-                                  .derivative = [alpha](FloatT x) { return derivative::leaky_relu(x, alpha); }
-            };
-        }
-        inline auto Elu(FloatT alpha = 0.01) {
-            return ActivationFunc{.normal     = [alpha](FloatT x) { return elu(x, alpha); },
-                                  .derivative = [alpha](FloatT x) { return derivative::elu(x, alpha); }
-            };
-        }
-    } // namespace activation_funcs
-
-
-    class Neuron {
-        friend class NeuralNetwork;
-        friend class PerceptronFFN;
-
-    public:
-        enum class Type {
-            Input, Output, Hidden, Bias
-        };
-
-        static StringT str_type(Type type) {
-            switch (type) {
-                case Type::Input:  return "Input";
-                case Type::Output: return "Output";
-                case Type::Hidden: return "Hidden";
-                case Type::Bias:   return "Bias";
-                default:           return "";
-            }
-        }
-
-    public:
-        explicit
-        Neuron(ActivationFunc func = activation_funcs::LeakyRelu()):
-                _type(Type::Hidden), _activation_func(std::move(func)) {}
-
-        explicit
-        Neuron(Type type, ActivationFunc func = activation_funcs::LeakyRelu()):
-                _type(type), _activation_func(std::move(func)) {}
-
-        Type type() const {
-            return _type;
-        }
-
-        auto str_type() const {
-            return str_type(_type);
-        }
-
-        auto& name() const {
-            return _name;
-        }
-
-        auto info() const {
-            return _name + ":" + str_type(_type);
-        }
-
-        FloatT derivative_output() {
-            return _activation_func.derivative(_output);
-        }
-
-        void activation_func(const ActivationFunc& func) {
-            if (_type != Type::Bias && _type != Type::Input)
-                _activation_func = func;
-            else
-                std::cerr << "Warning: Neuron::activation_func: attempt to set activation func to "
-                          << str_type(_type) << " neuron [" << _name << "]" << std::endl;
-        }
-
-    private:
-        void switch_type(Type type) {
-            _type = type;
-
-            switch (_type) {
-                case Type::Bias:
-                case Type::Input:
-                    _input = 1;
-                    _activation_func = activation_funcs::Identity();
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        void reset_input() {
-            _input = type() != Type::Bias ? 0 : 1;
-        }
-
-        void activate() {
-            _output = _activation_func.normal(_input);
-        }
-
-    private:
-        Type _type;
-
-        std::vector<size_t> _input_idxs;  // Input synapses
-        std::vector<size_t> _output_idxs; // Output synapses
-
-        ActivationFunc _activation_func;
-
-        FloatT _input  = 1;
-        FloatT _output = 1;
-
-        StringT _name = helper::next_neuron_name();
-    };
-
-
-    class Synapse {
-        friend class NeuralNetwork;
-        friend class PerceptronFFN;
-    public:
-        Synapse(size_t backward_index, size_t forward_index, FloatT iweight = 0):
-                _backward_idx(backward_index), _forward_idx(forward_index), weight(iweight) {}
-
-    public:
-        auto& name() const {
-            return _name;
-        }
-
-        FloatT weight;
-
-    private:
-        // For test run
-        bool _is_traversed = false;
-
-        FloatT  _last_delta_weight = 0;
-
-        size_t  _backward_idx;
-        size_t  _forward_idx;
-
-        StringT _name = helper::next_synapse_name();
-    };
-
-
-    using NeuronStorage   = std::vector<class Neuron>;
-    using SynapseStorage  = std::vector<class Synapse>;
-    using LayerStorage    = std::vector<std::vector<size_t>>;
-    using SharedNS        = std::shared_ptr<NeuronStorage>;
-    using SharedSS        = std::shared_ptr<SynapseStorage>;
-    using WeakNS          = std::weak_ptr<NeuronStorage>;
-    using WeakSS          = std::weak_ptr<SynapseStorage>;
-
-    class PerceptronFFN {
-        friend class NeuralNetwork;
-    public:
-        auto run(const std::vector<FloatT>& input) -> std::vector<FloatT> {
-            if (input.size() != input_count())
-                throw Exception("PerceptronFFN::run(): input vector size != input neurons count");
-
-            // Reset all inputs
-            for (auto& neuron : _neurons)
-                neuron.reset_input();
-
-            // Init input
-            for (size_t i = 0; i < input.size(); ++i)
-                _neurons[_layers.front()[i]]._input = input[i];
-
-
-            // Feed forward run
-            for (auto& layer : _layers) {
-                for (auto neuron_idx : layer) {
-                    // Activation function
-                    auto& neuron = _neurons[neuron_idx];
-                    neuron.activate();
-
-                    //std::cout << neuron.info() << " input:   " << neuron._input << std::endl;
-                    //std::cout << neuron.info() << " output:  " << neuron._output << std::endl;
-
-                    // Feed output
-                    for (auto synapse_idx : neuron._output_idxs) {
-                        auto& synapse     = _synapses[synapse_idx];
-                        auto& next_neuron = _neurons[synapse._forward_idx];
-
-                        next_neuron._input += neuron._output * synapse.weight;
-                    }
-                }
-            }
-
-            // Softmax regression
-
-            //FloatT sum = 0;
-            //for (auto neuron_idx : _layers.back())
-            //    sum += std::exp(_neurons[neuron_idx]._output);
-//
-            //for (auto neuron_idx : _layers.back())
-            //    _neurons[neuron_idx]._output = std::exp(_neurons[neuron_idx]._output) / sum;
-
-            // !Softmax regression
-
-
-            auto output = std::vector<FloatT>();
-            output.reserve(_layers.back().size());
-
-            for (auto neuron_idx : _layers.back())
-                output.emplace_back(_neurons[neuron_idx]._output);
-
-            return output;
-        }
-
-        FloatT mse_error(const std::vector<FloatT>& actual) {
-            if (actual.size() != output_count())
-                throw Exception("PerceptronFFN::backpropagation(): actual vector size != output neurons count");
-
-            FloatT result = 0;
-
-            for (size_t i = 0; i < actual.size(); ++i) {
-                auto tmp = _neurons[_layers.back()[i]]._output - actual[i];
-                result += tmp * tmp;
-            }
-
-            return result / actual.size();
-        }
-
-        void backpropagation(const std::vector<FloatT>& ideal) {
-            if (ideal.size() != output_count())
-                throw Exception("PerceptronFFN::backpropagation(): ideal vector size != output neurons count");
-
-            for (size_t i = 0; i < ideal.size(); ++i) {
-                auto& neuron = _neurons[_layers.back()[i]];
-
-                auto delta = (ideal[i] - neuron._output) * neuron.derivative_output(); // softmax (neuron._output * (1 - neuron._output))
-                neuron._input = delta; // input become delta
-            }
-
-            for (ptrdiff_t i = _layers.size() - 2; i >= 0; --i) {
-                for (auto neuron_idx : _layers[i]) {
-                    auto& neuron = _neurons[neuron_idx];
-
-                    if (!neuron._input_idxs.empty()) {
-                        FloatT sigma = 0;
-                        for (auto synapse_idx : neuron._output_idxs) {
-                            auto &synapse = _synapses[synapse_idx];
-                            auto &next_neuron = _neurons[synapse._forward_idx];
-
-                            sigma += synapse.weight * next_neuron._input; // w * delta
-                        }
-
-                        auto delta = neuron.derivative_output() * sigma;
-                        neuron._input = delta;
-                    }
-
-
-                    for (auto synapse_idx : neuron._output_idxs) {
-                        auto& synapse     = _synapses[synapse_idx];
-                        auto& next_neuron = _neurons[synapse._forward_idx];
-
-                        auto grad = neuron._output * next_neuron._input;
-                        auto delta_weight = _learning_rate * grad + _momentum * synapse._last_delta_weight;
-
-                        synapse._last_delta_weight = delta_weight;
-                        synapse.weight += delta_weight;
-                    }
-                }
-            }
-
-            ++_iteration;
-        }
-
-        void new_epoch() {
-            _iteration = 0;
-            ++_epoch;
-        }
-
-        // Statistics
-        size_t input_count() {
-            return _bias_enabled ? _layers.front().size() - 1 :
-                                   _layers.front().size();
-        }
-
-        size_t output_count() {
-            return _layers.back().size();
-        }
-
-        size_t neurons_count() {
-            return _neurons.size();
-        }
-
-        size_t synapses_count() {
-            return _synapses.size();
-        }
-
-        size_t layers_count() {
-            return _layers.size() - 1;
-        }
-
-        size_t iteration() {
-            return _iteration;
-        }
-
-        size_t epoch() {
-            return _epoch;
-        }
-
-        void set_learning_rate(FloatT value) {
-            _learning_rate = value;
-        }
-
-        FloatT learning_rate() {
-            return _learning_rate;
-        }
-
-        void set_momentum(FloatT value) {
-            _momentum = value;
-        }
-
-        FloatT momentum() {
-            return _momentum;
-        }
-
-
-    protected:
-        PerceptronFFN(NeuronStorage&& neurons, SynapseStorage&& synapses, LayerStorage&& layers,
-                      FloatT learning_rate, FloatT momentum)
-                : _neurons(neurons), _synapses(synapses), _layers(layers), _learning_rate(learning_rate),
-                  _momentum(momentum)
-        {
-            for (auto i = _neurons.rbegin(); i != _neurons.rend() && !_bias_enabled; ++i)
-                if (i->type() == Neuron::Type::Bias)
-                    _bias_enabled = true;
-
-            // Move bias-neuron to the end
-            if (_bias_enabled && _neurons[_layers.front().back()].type() != Neuron::Type::Bias) {
-                size_t i = 0;
-
-                while (i < _layers.front().size() && _neurons[_layers.front()[i]].type() != Neuron::Type::Bias)
-                    ++i;
-
-                std::swap(_layers.front()[i], _layers.front().back());
-            }
-        }
-
-    protected:
-        StringT _name;
-
-        bool           _bias_enabled = false;
-        NeuronStorage  _neurons;
-        SynapseStorage _synapses;
-        LayerStorage   _layers;
-
-        // Backpropagation
-        FloatT _learning_rate;
-        FloatT _momentum;
-        // !Backpropagation
-
-        size_t _iteration = 0;
-        size_t _epoch     = 0;
-    };
-    
     class NeuralNetwork {
     public:
         template <typename T, typename StorageT>
@@ -547,8 +43,8 @@ namespace nnw {
             std::weak_ptr<StorageT> _storage;
         };
 
-        using NeuronProvider  = Provider<Neuron, NeuronStorage>;
-        using SynapseProvider = Provider<Synapse, SynapseStorage>;
+        using NeuronProvider  = Provider<NeuronModel, NeuronStorage>;
+        using SynapseProvider = Provider<SynapseModel, SynapseStorage>;
 
     private:
         // Helpers
@@ -784,45 +280,45 @@ namespace nnw {
             return synapses;
         }
 
-        /**
-         * Mark neurons as input neurons
-         * @tparam _Size - size of input array of neurons
-         * @param neurons - array of neurons
-         */
-        template <size_t _Size>
-        void mark_as_input(const std::array<NeuronProvider, _Size>& neurons) {
-            _layers.clear();
-
-            _layers.emplace_back();
-            auto& input = _layers.front();
-
-            for (auto& neuron : neurons) {
-                if (neuron->type() != Neuron::Type::Bias)
-                    neuron->switch_type(Neuron::Type::Input);
-                input.emplace_back(neuron._index);
-            }
-        }
-
-        /**
-         * Mark neurons as input neurons
-         * @param neurons - vector of neurons
-         */
-        void mark_as_input(const std::vector<NeuronProvider>& neurons) {
-            _layers.clear();
-
-            if (neurons.empty())
-                return;
-
-            _layers.emplace_back();
-            auto& input = _layers.front();
-
-            for (auto& neuron : neurons) {
-                if (neuron->type() != Neuron::Type::Bias) {
-                    neuron->switch_type(Neuron::Type::Input);
-                    input.emplace_back(neuron._index);
-                }
-            }
-        }
+//        /**
+//         * Mark neurons as input neurons
+//         * @tparam _Size - size of input array of neurons
+//         * @param neurons - array of neurons
+//         */
+//        template <size_t _Size>
+//        void mark_as_input(const std::array<NeuronProvider, _Size>& neurons) {
+//            _layers.clear();
+//
+//            _layers.emplace_back();
+//            auto& input = _layers.front();
+//
+//            for (auto& neuron : neurons) {
+//                if (neuron->type() != NeuronModel::Type::Bias)
+//                    neuron->switch_type(NeuronModel::Type::Input);
+//                input.emplace_back(neuron._index);
+//            }
+//        }
+//
+//        /**
+//         * Mark neurons as input neurons
+//         * @param neurons - vector of neurons
+//         */
+//        void mark_as_input(const std::vector<NeuronProvider>& neurons) {
+//            _layers.clear();
+//
+//            if (neurons.empty())
+//                return;
+//
+//            _layers.emplace_back();
+//            auto& input = _layers.front();
+//
+//            for (auto& neuron : neurons) {
+//                if (neuron->type() != NeuronModel::Type::Bias) {
+//                    neuron->switch_type(NeuronModel::Type::Input);
+//                    input.emplace_back(neuron._index);
+//                }
+//            }
+//        }
 
         /**
          * Init synapses weights with specified strategy
@@ -841,7 +337,7 @@ namespace nnw {
 
                     for (auto& synapse : *_synapses) {
                         if constexpr (_ZeroBiases) {
-                            if (_neurons->at(synapse._backward_idx).type() == Neuron::Type::Bias) {
+                            if (_neurons->at(synapse._backward_idx).type() == NeuronModel::Type::Bias) {
                                 synapse.weight = 0;
                                 break;
                             }
@@ -857,7 +353,7 @@ namespace nnw {
                     for (size_t idx = 0; idx < _neurons->size(); ++idx) {
                         auto& neuron = (*_neurons)[idx];
 
-                        if ((neuron.type() != Neuron::Type::Bias && neuron._input_idxs.empty()) ||
+                        if ((neuron.type() != NeuronModel::Type::Bias && neuron._input_idxs.empty()) ||
                             neuron._output_idxs.empty())
                         {
                             ++input_output_count;
@@ -869,7 +365,7 @@ namespace nnw {
 
                     for (auto& synapse : *_synapses) {
                         if constexpr (_ZeroBiases) {
-                            if (_neurons->at(synapse._backward_idx).type() == Neuron::Type::Bias) {
+                            if (_neurons->at(synapse._backward_idx).type() == NeuronModel::Type::Bias) {
                                 synapse.weight = 0;
                                 break;
                             }
@@ -882,16 +378,30 @@ namespace nnw {
         }
 
         auto compile() {
-            if (synapses_count() == 0)
+            if (get_neurons_count() == 0)
+                throw Exception("NeuralNetwork::compile(): no neurons!");
+
+            if (get_synapses_count() == 0)
                 throw Exception("NeuralNetwork::compile(): no synapses!");
 
-            if (_layers.empty() || _layers.front().empty())
-                throw Exception("NeuralNetwork::compile(): no input layer provided");
+            _layers.clear();
+            _layers.emplace_back();
 
-            _layers.resize(1);
 
             // Layers computation
 
+            // Find input layer
+            for (size_t idx = 0; idx < _neurons->size(); ++idx) {
+                auto& neuron = (*_neurons)[idx];
+
+                if (neuron.type() != NeuronModel::Type::Bias && neuron._input_idxs.empty()) {
+                    neuron.switch_type(NeuronModel::Type::Input);
+                    _layers.front().emplace_back(idx);
+                }
+            }
+
+            if (_layers.empty() || _layers.front().empty())
+                throw Exception("NeuralNetwork::compile(): no input layer provided");
 
             // Check is input layer input
             for (auto neuron_idx : _layers.front())
@@ -948,7 +458,7 @@ namespace nnw {
                         auto &synapse = _synapses->at(synapse_idx);
 
                         if (!synapse._is_traversed &&
-                            _neurons->at(synapse._backward_idx).type() != Neuron::Type::Bias) {
+                            _neurons->at(synapse._backward_idx).type() != NeuronModel::Type::Bias) {
                             is_all_input_synapse_traversed = false;
                             break;
                         }
@@ -989,7 +499,7 @@ namespace nnw {
                         auto& synapse = _synapses->at(synapse_idx);
                         auto& backward_neuron = _neurons->at(synapse._backward_idx);
 
-                        if (backward_neuron.type() == Neuron::Type::Bias) {
+                        if (backward_neuron.type() == NeuronModel::Type::Bias) {
                             if (!backward_neuron._input_idxs.empty())
                                 throw Exception("NeuralNetwork::compile(): "
                                                 "connection to bias neuron " + backward_neuron.name());
@@ -1014,7 +524,7 @@ namespace nnw {
                 for (size_t i = 0; i < _layers.size() - 1; ++i) {
                     bool is_bias_found = false;
                     for (auto neuron_idx : _layers[i])
-                        is_bias_found = is_bias_found || (_neurons->at(neuron_idx).type() == Neuron::Type::Bias);
+                        is_bias_found = is_bias_found || (_neurons->at(neuron_idx).type() == NeuronModel::Type::Bias);
 
                     if (!is_bias_found)
                         throw Exception(StringT("NeuralNetwork::compile(): missing bias-neuron in ") +
@@ -1025,7 +535,30 @@ namespace nnw {
             // Switch last layer neurons type to Output
             if (_layers.size() > 1)
                 for (auto neuron_idx : _layers.back())
-                    _neurons->at(neuron_idx).switch_type(Neuron::Type::Output);
+                    _neurons->at(neuron_idx).switch_type(NeuronModel::Type::Output);
+
+            // Check softmax layer
+            bool has_softmax_output = false;
+            if (_layers.size() > 1) {
+                has_softmax_output = true;
+                bool softmax_meet  = false;
+
+                for (auto& neuron : *_neurons) {
+                    if (!neuron.output_idxs().empty()) {
+                        if (neuron.activation_func().type == ActivationTypes::Softmax)
+                            throw Exception("NeuralNetwork::compile(): softmax activation "
+                                            "supported in output layer only");
+                    } else {
+                        if (neuron.activation_func().type == ActivationTypes::Softmax)
+                            softmax_meet = true;
+                        else
+                            has_softmax_output = false;
+                    }
+                }
+
+                if (softmax_meet && !has_softmax_output)
+                    throw Exception("NeuralNetwork::compile(): softmax must be on each neuron in output layer!");
+            }
 
             // Throw in unconnected neurons found
             {
@@ -1039,11 +572,17 @@ namespace nnw {
                     throw Exception("NeuralNetwork::compile(): unconnected neurons found");
 
                 if (actual > all)
-                    throw Exception("NeuralNetwork::compile(): actual(" + std::to_string(actual) + ") > all(" + std::to_string(all) + ") (!?)");
+                    throw Exception("NeuralNetwork::compile(): actual(" + std::to_string(actual) +
+                                    ") > all(" + std::to_string(all) + ") (!?)");
             }
 
-            auto result = PerceptronFFN(std::move(*_neurons), std::move(*_synapses), std::move(_layers),
-                                        _learning_rate, _momentum);
+            size_t input_layer_size = _layers.front().size();
+            for (auto neuron_idx : _layers.front())
+                if ((*_neurons)[neuron_idx].type() == NeuronType::Bias)
+                    --input_layer_size;
+
+            auto result = FeedForwardNeuralNetwork(
+                    *_neurons, *_synapses, _layers, input_layer_size, _learning_rate, _momentum, _batch_size, has_softmax_output);
 
             _neurons  = std::make_shared<NeuronStorage>();
             _synapses = std::make_shared<SynapseStorage>();
@@ -1060,25 +599,33 @@ namespace nnw {
             _momentum = value;
         }
 
+        void set_batch_size(size_t value) {
+            _batch_size = value;
+        }
+
         // Statistics
-        size_t neurons_count() {
+        size_t get_neurons_count() {
             return _neurons->size();
         }
 
-        size_t synapses_count() {
+        size_t get_synapses_count() {
             return _synapses->size();
         }
 
-        size_t layers_count() {
+        size_t get_layers_count() {
             return _layers.size() - 1;
         }
 
-        FloatT learning_rate() {
+        FloatT get_learning_rate() {
             return _learning_rate;
         }
 
-        FloatT momentum() {
+        FloatT get_momentum() {
             return _momentum;
+        }
+
+        size_t get_batch_size() {
+            return _batch_size;
         }
 
     private:
@@ -1110,7 +657,9 @@ namespace nnw {
         SharedSS _synapses;
 
         FloatT _learning_rate = 0.01;
-        FloatT _momentum = 0.1;
+        FloatT _momentum = 0;
+
+        size_t _batch_size = 1;
 
         std::vector<std::vector<size_t>> _layers;
     };
