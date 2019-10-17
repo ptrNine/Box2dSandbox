@@ -1,10 +1,8 @@
 macro(git_submodule_build _project_name)
-    set(options "")
+    set(options INSTALL_SUB_DEPS)
     set(oneValueArgs "")
     set(multiValueArgs CMAKE_ARGS)
     cmake_parse_arguments(${_project_name} "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    project(${_project_name}_download)
 
     message("-- Build submodule '${_project_name}' at ${CMAKE_SOURCE_DIR}/remote/${_project_name}")
 
@@ -35,6 +33,12 @@ macro(git_submodule_build _project_name)
 
     if(result)
         message(FATAL_ERROR "Build step for ${_project_name} failed: ${result}")
+    endif()
+
+    if (${_project_name}_INSTALL_SUB_DEPS)
+        message("Install sub-dependenies of ${_project_name}...")
+
+        file(COPY "${CMAKE_BINARY_DIR}/remote/${_project_name}/fakeroot/" DESTINATION "${CMAKE_BINARY_DIR}/fakeroot/")
     endif()
 
 endmacro()

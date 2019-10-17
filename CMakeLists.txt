@@ -16,7 +16,7 @@ set(SFML_LIBS sfml-system sfml-window sfml-graphics sfml-network sfml-audio)
 # Update and build submodules
 git_submodule_update()
 git_submodule_build(SimpleConfigManager)
-git_submodule_build(SimpleContainersLibrary)
+git_submodule_build(SimpleContainersLibrary INSTALL_SUB_DEPS)
 
 set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/fakeroot)
 
@@ -27,6 +27,14 @@ include(${SCM_USE_FILE})
 # SCL
 find_package(SCL REQUIRED)
 include(${SCL_USE_FILE})
+
+# fmt
+find_package(fmt REQUIRED)
+
+#utf8cpp
+find_package(utf8cpp REQUIRED)
+
+include_directories(${CMAKE_BINARY_DIR}/fakeroot/include)
 
 include_directories(3p/usr/local/include)
 link_directories(3p/usr/local/lib)
