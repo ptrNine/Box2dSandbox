@@ -27,7 +27,9 @@ class PhysicSimulation {
     B2WorldUP         _world;
 
 public:
-    DEFINE_SELF_FABRICS(PhysicSimulation)
+    DECLARE_SELF_FABRICS(PhysicSimulation)
+
+    static UniquePtr createTestSimulation();
 
     PhysicSimulation();
     ~PhysicSimulation();
@@ -36,6 +38,7 @@ public:
     auto detachDrawableManager();
 
     void spawnBox(float x, float y);
+    auto createBody(const class b2BodyDef* body_def) -> class b2Body*;
 
     void update();
     void step();
@@ -54,8 +57,7 @@ private:
     bool _debug_draw = false;
     bool _on_pause   = false;
 
-
-    float _step_time  = 1.f/60.f;
+    float _step_time = 1.f/60.f;
     int32_t _velocity_iters = 8;
     int32_t _position_iters = 3;
 
@@ -66,8 +68,10 @@ public:
     void debug_draw(bool value);
     bool debug_draw() { return _debug_draw; }
 
-    DEFINE_GET_SET(velocity_iters);
-    DEFINE_GET_SET(position_iters);
-    DEFINE_GET_SET(step_time);
-    DEFINE_GET_SET(on_pause);
+    DECLARE_GET_SET(velocity_iters);
+    DECLARE_GET_SET(position_iters);
+    DECLARE_GET_SET(step_time);
+    DECLARE_GET_SET(on_pause);
+
+    void gravity(float x, float y);
 };

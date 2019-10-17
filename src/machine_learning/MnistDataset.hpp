@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TruevisionImage.hpp"
+#include "../file_formats/TruevisionImage.hpp"
 
 namespace nnw {
     using StringT = std::string;
@@ -11,18 +11,18 @@ namespace nnw {
         MnistDataset(const StringT& data_path, const StringT& labels_path) {
             // Load data
             {
-                auto ds = FileDeserializer(data_path);
+                auto ds = fft::FileDeserializer(data_path);
 
                 if (ds.pop<uint32_t>() != 0x03080000)
                     throw Exception("MnistDataset::MnistDataset(): Wrong magic number!");
 
-                size_t size = swap_endian(ds.pop<uint32_t>());
+                size_t size = fft::swap_endian(ds.pop<uint32_t>());
                 _data.reserve(size);
-                _width = swap_endian(ds.pop<uint32_t>());
-                _height = swap_endian(ds.pop<uint32_t>());
+                _width = fft::swap_endian(ds.pop<uint32_t>());
+                _height = fft::swap_endian(ds.pop<uint32_t>());
 
                 for (size_t i = 0; i < size; ++i) {
-                    auto map = ColorMap8F(_width, _height);
+                    auto map = fft::ColorMap8F(_width, _height);
 
                     for (size_t j = 0; j < _height; ++j)
                         for (size_t k = 0; k < _width; ++k)
@@ -34,12 +34,12 @@ namespace nnw {
 
             // Load labels
             {
-                auto ds = FileDeserializer(labels_path);
+                auto ds = fft::FileDeserializer(labels_path);
 
                 if (ds.pop<uint32_t>() != 0x01080000)
                     throw Exception("MnistDataset::MnistDataset(): Wrong magic number!");
 
-                if (swap_endian(ds.pop<uint32_t>()) != _data.size())
+                if (fft::swap_endian(ds.pop<uint32_t>()) != _data.size())
                     throw Exception("MnistDataset::MnistDataset(): Labels count != images count");
 
                 _labels.reserve(_data.size());
@@ -49,7 +49,7 @@ namespace nnw {
             }
         }
 
-        auto data() const -> const std::vector<ColorMap8F>& {
+        auto data() const -> const std::vector<fft::ColorMap8F>& {
             return _data;
         }
 
@@ -65,14 +65,14 @@ namespace nnw {
             for (size_t i = 0; i < count; ++i) {
                 StringT name = StringT("digit-") + std::to_string(i) + ".tga";
 
-                auto image = TruevisionImage(TruevisionImage::Type::Monochrome);
+                auto image = fft::TruevisionImage(fft::TruevisionImage::Type::Monochrome);
                 image.from_color_map(_data[i]);
                 image.save(dir + name);
 
                 if (i > count)
                     break;
             }
-            auto sr = Serializer();
+            auto sr = fft::Serializer();
 
             sr.push("labels:\n");
             for (size_t i = 0; i < count; ++i) {
@@ -86,7 +86,7 @@ namespace nnw {
     private:
         size_t _width  = 0;
         size_t _height = 0;
-        std::vector<ColorMap8F> _data;
-        std::vector<uint8_t>    _labels;
+        std::vector<fft::ColorMap8F> _data;
+        std::vector<uint8_t>         _labels;
     };
 }

@@ -22,7 +22,7 @@ public:
     using EventCallback       = std::function<void(Camera&, const sf::Event&, const class Window&)>;
 
 public:
-    DEFINE_SELF_FABRICS(Camera)
+    DECLARE_SELF_FABRICS(Camera)
 
     Camera(const std::string_view& name = "",
            float aspect_ratio = 16.f/9.f,
@@ -129,6 +129,5 @@ private:
     float             _aspect_ratio = 16.f/9.f;
     float             _eye_width = 10;
 
-    // Todo: use smart pointer for this!
     CameraManipulatorSP _manipulator;
 };

@@ -18,7 +18,7 @@ class ObjectManager;
 template <typename ObjectT, typename AttribT>
 class ObjectManager <ObjectT, AttribT, std::enable_if_t<std::is_same_v<AttribT, void>>> {
 public:
-    DEFINE_SELF_FABRICS(ObjectManager)
+    DECLARE_SELF_FABRICS(ObjectManager)
 
     ObjectManager           (const ObjectManager<ObjectT, AttribT>&) = delete;
     ObjectManager& operator=(const ObjectManager<ObjectT, AttribT>&) = delete;

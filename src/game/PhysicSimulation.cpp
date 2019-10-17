@@ -29,25 +29,41 @@ static void createBox(b2World& world, const b2Vec2& pos, const b2Vec2& size) {
     fixture_def.density = 1.0f;
     fixture_def.friction = 0.3f;
     fixture_def.restitution = 0.6f;
+
     body->CreateFixture(&fixture_def);
+}
+
+auto PhysicSimulation::createBody(const b2BodyDef* body_def) -> b2Body* {
+    auto body = _world->CreateBody(body_def);
+
+    createDebugDrawObjects();
+    updateDebugDraw();
+
+    return body;
 }
 
 PhysicSimulation::PhysicSimulation() {
     _world = std::make_unique<b2World>(b2Vec2(0.0f, -9.8f));
+}
 
-    b2BodyDef ground_body_def;
-    ground_body_def.position.Set(0.0f, -10.f);
-    b2Body* ground_body = _world->CreateBody(&ground_body_def);
+auto PhysicSimulation::createTestSimulation() -> PhysicSimulation::UniquePtr {
+    auto ps = PhysicSimulation::createUnique();
 
-    b2PolygonShape ground_box;
+    b2BodyDef body_def;
+    body_def.position.Set(0.0f, -10.f);
+    b2Body* body = ps->_world->CreateBody(&body_def);
+
+    b2PolygonShape box;
     //ground_box.m_radius = 0.005f;
-    ground_box.SetAsBox(50.f, 10.f);
+    box.SetAsBox(50.f, 10.f);
 
-    ground_body->CreateFixture(&ground_box, 0.0f);
+    body->CreateFixture(&box, 0.0f);
 
     for (int j = 0; j < 25; ++j)
         for (int i = 0; i < 25 - j; ++i)
-            createBox(*_world, b2Vec2(0.0f + i / 4.f, 104.f + j / 4.f), b2Vec2(0.1f, 0.1f));
+            createBox(*ps->_world, b2Vec2(0.0f + i / 4.f, 104.f + j / 4.f), b2Vec2(0.1f, 0.1f));
+
+    return ps;
 }
 
 
@@ -160,6 +176,9 @@ void PhysicSimulation::enableDebugDraw() {
 }
 
 void PhysicSimulation::createDebugDrawObjects() {
+    if (!_debug_draw)
+        return;
+
     auto body = _world->GetBodyList();
 
     while (body) {
@@ -206,6 +225,9 @@ void PhysicSimulation::createDebugDrawObjects() {
 }
 
 void PhysicSimulation::updateDebugDraw() {
+    if (!_debug_draw)
+        return;
+
     for (auto pair : _draw_map) {
          b2Fixture*    b2_fixture  = pair.first;
          sf::Drawable* sf_drawable = pair.second;
@@ -226,4 +248,8 @@ void PhysicSimulation::spawnBox(float x, float y) {
     createBox(*_world, b2Vec2(x, y), b2Vec2(0.1f, 0.1f));
     createDebugDrawObjects();
     updateDebugDraw();
+}
+
+void PhysicSimulation::gravity(float x, float y) {
+    _world->SetGravity(b2Vec2(x, y));
 }

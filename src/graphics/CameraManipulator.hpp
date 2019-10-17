@@ -15,7 +15,7 @@ class CameraManipulator {
     using RegularCallback = std::function<void(class CameraManipulator&, class Camera&, float delta_time)>;
 
 public:
-    DEFINE_SELF_FABRICS(CameraManipulator)
+    DECLARE_SELF_FABRICS(CameraManipulator)
 
     void attachEventCallback(const EventCallback& callback) {
         _event_callback = callback;

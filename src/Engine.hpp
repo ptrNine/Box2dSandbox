@@ -26,10 +26,15 @@ public:
 
     int run(int argc, char* argv[]);
 
+
+public:
+    // Ui callbacks
+    Window::UiCallbackT uiPhysics(DrawableManagerSP& drawable_manager);
+
 private:
     void onCreate();
     void mainUpdate();
-    void gameMain();
+    void mainCreate();
 
     void addWindow   (const std::shared_ptr<Window>& window, const WindowParams& params = WindowParams());
     void removeWindow(const std::shared_ptr<Window>& window);

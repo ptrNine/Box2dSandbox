@@ -15,7 +15,7 @@ int Engine::run(int argc, char* argv[]) {
 }
 
 void Engine::onCreate() {
-    gameMain();
+    mainCreate();
 }
 
 void Engine::mainUpdate() {

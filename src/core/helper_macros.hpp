@@ -10,12 +10,12 @@ static CLASS& instance() { \
     return inst; \
 }
 
-#define DEFINE_GET_SET(FIELD) \
+#define DECLARE_GET_SET(FIELD) \
 auto& FIELD() const { return _##FIELD; } \
 void FIELD(const decltype(_##FIELD)& value) { _##FIELD = value; }
 
 
-#define DEFINE_SELF_FABRICS(CLASS)  \
+#define DECLARE_SELF_FABRICS(CLASS)  \
 using SharedPtr = std::shared_ptr<CLASS>; \
 using UniquePtr = std::unique_ptr<CLASS>; \
 template<typename... Args>          \

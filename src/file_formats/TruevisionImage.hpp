@@ -6,7 +6,7 @@
 
 #include "SimpleSerializer.hpp"
 
-namespace nnw {
+namespace fft {
     using FloatT  = float;
     using StringT = std::string;
 
@@ -173,7 +173,7 @@ namespace nnw {
         }
 
         void save(const StringT& path) const {
-            auto serializer = nnw::Serializer();
+            auto serializer = fft::Serializer();
             // Header
             serializer.push<uint8_t>(0); // Identifier (no ID)
             serializer.push<uint8_t>(0); // Color map type (no map)

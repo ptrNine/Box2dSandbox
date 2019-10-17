@@ -9,10 +9,9 @@
 #include "details/Exception.hpp"
 #include "details/FixedVector.hpp"
 #include "Neuron.hpp"
-#include "Synapse.hpp"
 #include "NeuronModel.hpp"
 #include "SynapseModel.hpp"
-#include "SimpleSerializer.hpp"
+#include "../file_formats/SimpleSerializer.hpp"
 
 namespace nnw {
     inline StringT nnw_ffnn_file_header() {
@@ -74,13 +73,15 @@ namespace nnw {
                 storage_size += layer.size() * sizeof(Neuron);
             }
 
+            size_t weights_count = 0;
             for (auto& neuron : neurons) {
                 storage_size +=  neuron.input_idxs().size() * sizeof(InputNeuron);
                 storage_size += neuron.output_idxs().size() * sizeof(OutputNeuron);
+                weights_count += neuron.input_idxs().size(); // Weights and biases
             }
+            storage_size += weights_count * sizeof(FloatT*);
 
             _storage.init(storage_size);
-
 
             // Init
             _layers.init(_storage, layers.size());
@@ -101,6 +102,8 @@ namespace nnw {
             }
 
             _neurons.init(_storage, neurons.size());
+
+            _weights.init(_storage, weights_count);
 
             if (_storage.allocated_size() != _storage.max_size())
                 throw Exception("FeedForwardNeuralNetwork:FeedForwardNeuralNetwork(): "
@@ -156,6 +159,12 @@ namespace nnw {
                 for (auto& out_connection : outputs)
                     out_connection.weight = input_connections[{_neurons[i], out_connection.neuron}];
             }
+
+            // Weights and biases
+            for (auto neuron : _neurons)
+                for (auto& connection : neuron->connections.output)
+                    _weights.assign_back(connection.weight);
+
         }
 
         template <bool _MultiThread = true>
@@ -529,7 +538,7 @@ namespace nnw {
             _learning_rate *= multiplier;
         }
 
-        void deserialize(Deserializer& ids) {
+        void deserialize(fft::Deserializer& ids) {
             auto header = StringT(nnw_ffnn_file_header().size(), ' ');
 
             ids.pop(header.data(), header.size());
@@ -549,11 +558,12 @@ namespace nnw {
             if (md5 != md5::md5(bytes.data(), bytes.size()))
                 throw Exception("FeedForwardNeuralNetwork::deserialize(): md5 checksum not valid");
 
-            auto ds = Deserializer(bytes);
+            auto ds = fft::Deserializer(bytes);
 
             _storage.unsafe_free();
             _neurons.unsafe_unbound();
-            _layers.unsafe_unbound();
+            _layers .unsafe_unbound();
+            _weights.unsafe_unbound();
 
             _storage.init(ds.pop<uint64_t>());
 
@@ -571,6 +581,7 @@ namespace nnw {
             size_t layers_count = ds.pop<uint64_t>();
             _layers.init(_storage, layers_count);
 
+            size_t weights_count = 0;
             for (auto& layer : _layers) {
                 size_t layer_size = ds.pop<uint64_t>();
                 layer.init(_storage, layer_size);
@@ -579,6 +590,8 @@ namespace nnw {
                     neuron.id = ds.pop<uint64_t>();
                     neuron.connections.input.init(_storage, ds.pop<uint64_t>());
                     neuron.connections.output.init(_storage, ds.pop<uint64_t>());
+
+                    weights_count += neuron.connections.output.size();
 
                     id_neuron_map.emplace(neuron.id, &neuron);
                 }
@@ -590,6 +603,8 @@ namespace nnw {
                 throw Exception("FeedForwardNeuralNetwork::deserialize(): data was corrupted (but hash is valid!?)");
 
             _neurons.init(_storage, neurons_count);
+            _weights.init(_storage, weights_count);
+
 
             if (_storage.allocated_size() != _storage.max_size())
                 throw Exception("FeedForwardNeuralNetwork:FeedForwardNeuralNetwork(): "
@@ -639,10 +654,14 @@ namespace nnw {
                 for (auto& neuron : layer)
                     _neurons.assign_back(&neuron);
 
+            // Weights and biases
+            for (auto neuron : _neurons)
+                for (auto& connection : neuron->connections.output)
+                    _weights.assign_back(connection.weight);
         }
 
-        void serialize(Serializer& out_serializer) const {
-            auto serializer = Serializer();
+        void serialize(fft::Serializer& out_serializer) const {
+            auto serializer = fft::Serializer();
 
             serializer.push<uint64_t>(_storage.max_size());
             serializer.push<uint64_t>(_input_layer_size);
@@ -711,8 +730,8 @@ namespace nnw {
 
         void save(const StringT& path) const {
             std::cout << "FeedForwardNeuralNetwork::save(): save to '" + path + "'" << std::endl;
-            auto file = FileSerializer(path);
-            auto sr   = Serializer();
+            auto file = fft::FileSerializer(path);
+            auto sr   = fft::Serializer();
 
             serialize(sr);
 
@@ -721,9 +740,9 @@ namespace nnw {
 
         void load(const StringT& path) {
             std::cout << "FeedForwardNeuralNetwork::load(): load from '" + path + "'" << std::endl;
-            auto file  = FileDeserializer(path);
+            auto file  = fft::FileDeserializer(path);
             auto bytes = file.read_all_buffered();
-            auto ds    = Deserializer(bytes);
+            auto ds    = fft::Deserializer(bytes);
 
             deserialize(ds);
         }
@@ -731,6 +750,7 @@ namespace nnw {
     private:
         FixedVector<Neuron*>              _neurons;
         FixedVector<FixedVector<Neuron>>  _layers;
+        FixedVector<FloatT*>              _weights;
         FixedStorage                      _storage;
 
         size_t _input_layer_size;

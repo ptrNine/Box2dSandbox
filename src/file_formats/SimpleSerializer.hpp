@@ -4,7 +4,7 @@
 #include <fstream>
 #include <cstring>
 
-namespace nnw {
+namespace fft {
     using StringT = std::string;
 
     template <typename T>
@@ -23,7 +23,7 @@ namespace nnw {
     public:
         FileSerializer(const StringT& path): _ofs(path, std::ios::out | std::ios::binary) {
             if (!_ofs.is_open())
-                throw Exception("Can't open file '" + path + "'");
+                throw std::runtime_error("Can't open file '" + path + "'");
         }
 
         template <typename T>
@@ -49,7 +49,7 @@ namespace nnw {
     public:
         FileDeserializer(const StringT& path): _ifs(path, std::ios::in | std::ios::binary) {
             if (!_ifs.is_open())
-                throw Exception("Can't open file '" + path + "'");
+                throw std::runtime_error("Can't open file '" + path + "'");
         }
 
         template <typename T>
@@ -213,8 +213,8 @@ namespace nnw {
     private:
         void throw_if_ofb() {
             if (_p >= _data.size())
-                throw Exception("Deserializer: out of bound: " + std::to_string(_p) +
-                                " vs " + std::to_string(_data.size()));
+                throw std::runtime_error("Deserializer: out of bound: " + std::to_string(_p) +
+                                         " vs " + std::to_string(_data.size()));
         }
 
     private:

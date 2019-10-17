@@ -30,7 +30,7 @@ using CameraSP          = std::shared_ptr<Camera>;
 
 class Window {
 public:
-    DEFINE_SELF_FABRICS(Window)
+    DECLARE_SELF_FABRICS(Window)
     using UiCallbackT    = std::function<void(Window&, NkCtx*)>;
     using EventCallbackT = std::function<void(Window&, const sf::Event&)>;
 

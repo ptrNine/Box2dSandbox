@@ -1,0 +1,6 @@
+[submodule "remote/SimpleContainersLibrary"]
+	path = remote/SimpleContainersLibrary
+	url = https://github.com/ptrNine/SimpleContainersLibrary
+[submodule "remote/SimpleConfigManager"]
+	path = remote/SimpleConfigManager
+	url = https://github.com/ptrNine/SimpleConfigManager

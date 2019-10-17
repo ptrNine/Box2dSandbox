@@ -24,9 +24,12 @@ set(${PROJECT_NAME}_sources
         src/graphics/CameraManipulator.cpp
         src/game/PhysicSimulation.cpp
         src/core/time.cpp
-        src/gameMain.cpp
+        src/ui_callbacks.cpp
         )
 
 add_executable(platformer main.cpp ${${PROJECT_NAME}_sources})
+add_executable(physic_body_constructor physic_body_constructor.cpp ${${PROJECT_NAME}_sources})
+
 
 target_link_libraries(platformer ${SFML_LIBS} GL GLEW Box2D -pthread ${SCM_STATIC_LIBRARIES} fmt)
+target_link_libraries(physic_body_constructor ${SFML_LIBS} GL GLEW Box2D -pthread ${SCM_STATIC_LIBRARIES} fmt)
