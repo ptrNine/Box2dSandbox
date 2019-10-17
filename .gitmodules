@@ -4,3 +4,9 @@
 [submodule "remote/SimpleConfigManager"]
 	path = remote/SimpleConfigManager
 	url = https://github.com/ptrNine/SimpleConfigManager
+[submodule "remote/fmt"]
+	path = remote/fmt
+	url = https://github.com/fmtlib/fmt
+[submodule "remote/utfcpp"]
+	path = remote/utfcpp
+	url = https://github.com/nemtrif/utfcpp

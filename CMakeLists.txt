@@ -3,27 +3,30 @@ project(platformer)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# CMake modules
 include(CMake/git_submodule_build.cmake)
 include(CMake/git_submodule_update.cmake)
 
+# SFML
 set(CMAKE_PREFIX_PATH "3p/usr/local/")
 set(SFML_DIR "3p/usr/local/lib/cmake/SFML")
 find_package(SFML 2.5 REQUIRED COMPONENTS system window graphics network audio)
 set(SFML_LIBS sfml-system sfml-window sfml-graphics sfml-network sfml-audio)
 
+# Update and build submodules
 git_submodule_update()
 git_submodule_build(SimpleConfigManager)
 git_submodule_build(SimpleContainersLibrary)
 
 set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/fakeroot)
 
+# SCM
 find_package(SCM REQUIRED)
 include(${SCM_USE_FILE})
 
+# SCL
 find_package(SCL REQUIRED)
 include(${SCL_USE_FILE})
-
-find_package(fmt REQUIRED)
 
 include_directories(3p/usr/local/include)
 link_directories(3p/usr/local/lib)
