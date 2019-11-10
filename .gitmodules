@@ -10,3 +10,6 @@
 [submodule "remote/utfcpp"]
 	path = remote/utfcpp
 	url = https://github.com/nemtrif/utfcpp
+[submodule "remote/gainput"]
+	path = remote/gainput
+	url = https://github.com/jkuhlmann/gainput
