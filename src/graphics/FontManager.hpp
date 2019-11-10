@@ -1,0 +1,8 @@
+//
+// Created by slava on 21.10.19.
+//
+
+#ifndef PLATFORMER_FONTMANAGER_HPP
+#define PLATFORMER_FONTMANAGER_HPP
+
+#endif //PLATFORMER_FONTMANAGER_HPP
