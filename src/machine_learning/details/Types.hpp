@@ -25,6 +25,7 @@ namespace nnw {
     enum class ActivationTypes {
         Identity,
         Logit,
+        Tanh,
         RELU,
         PRELU,
         LeakyRELU,
