@@ -6,6 +6,7 @@
 
 #include <flat_hash_map.hpp>
 #include <SFML/Graphics/Drawable.hpp>
+#include <scl/scl.hpp>
 
 #include "DrawableManager.hpp"
 #include "../core/helper_macros.hpp"
@@ -23,16 +24,16 @@ namespace sf {
 
 class Camera;
 
-using WindowP           = std::unique_ptr<sf::RenderWindow>;
-using SettingsP         = std::unique_ptr<sf::ContextSettings>;
-using DrawableManagerSP = std::shared_ptr<DrawableManager>;
-using CameraSP          = std::shared_ptr<Camera>;
+using WindowP   = std::unique_ptr<sf::RenderWindow>;
+using SettingsP = std::unique_ptr<sf::ContextSettings>;
+using CameraSP  = std::shared_ptr<Camera>;
 
 class Window {
 public:
-    DECLARE_SELF_FABRICS(Window)
-    using UiCallbackT    = std::function<void(Window&, NkCtx*)>;
-    using EventCallbackT = std::function<void(Window&, const sf::Event&)>;
+    DECLARE_SELF_FABRICS(Window);
+    using UiCallbackT     = std::function<void(Window&, NkCtx*)>;
+    using EventCallbackT  = std::function<void(Window&, const sf::Event&)>;
+    using RenderCallbackT = std::function<void(Window&)>;
 
 public:
     Window();
@@ -59,6 +60,14 @@ public:
         _ui_callbacks.erase(name);
     }
 
+    void addRenderCallback(const std::string& name, const RenderCallbackT& callback) {
+        _render_callbacks.emplace(name, callback);
+    }
+
+    void removeRenderCallback(const std::string& name) {
+        _render_callbacks.erase(name);
+    }
+
     void attachDrawableManager(const DrawableManagerSP &drawable_manager) {
         _drawable_manager = drawable_manager;
     }
@@ -79,14 +88,22 @@ public:
         _cameras.erase(camera);
     }
 
-    auto getCurrentCoords() -> sf::Vector2f;
+    auto getMouseCoords() const -> scl::Vector2f;
+    auto getMouseCoords(const Camera& camera) const -> scl::Vector2f;
 
     bool isOpen    ();
     void close     ();
     bool is_visible() { return _is_visible; }
     void is_visible(bool value);
 
-    void setSize(uint32_t x, uint32_t y);
+    void size(uint32_t x, uint32_t y);
+
+    void size(const scl::Vector2u32& value) {
+        size(value.x(), value.y());
+    }
+
+    scl::Vector2u size() const;
+    scl::Vector2f sizef() const;
 
 private:
 
@@ -97,8 +114,9 @@ private:
     SettingsP    _settings;
     bool         _is_visible = true;
 
-    ska::flat_hash_map<std::string, UiCallbackT>    _ui_callbacks;
-    ska::flat_hash_map<std::string, EventCallbackT> _event_callbacks;
+    ska::flat_hash_map<std::string, UiCallbackT>     _ui_callbacks;
+    ska::flat_hash_map<std::string, EventCallbackT>  _event_callbacks;
+    ska::flat_hash_map<std::string, RenderCallbackT> _render_callbacks;
 
     DrawableManagerSP _drawable_manager;
     ska::flat_hash_set<CameraSP> _cameras;

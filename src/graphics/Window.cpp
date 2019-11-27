@@ -7,6 +7,7 @@
 #include "nuklear.hpp"
 
 #include "Camera.hpp"
+#include "HUD.hpp"
 #include "../Engine.hpp"
 
 #define MAX_VERTEX_BUFFER  512 * 1024
@@ -86,14 +87,21 @@ void Window::eventUpdate() {
 }
 
 void Window::update(float delta_time) {
-    for (auto& camera : _cameras)
-        camera->updateRegular(delta_time);
+    {
+        auto safe_copy = std::vector(_cameras.begin(), _cameras.end());
+
+        for (auto& camera : safe_copy)
+            camera->updateRegular(delta_time);
+    }
 }
 
 void Window::render() {
     // Call all ui callbacks
-    for (auto& cb : _ui_callbacks)
-        cb.second(*this, _ctx);
+    {
+        auto safe_copy = std::vector(_ui_callbacks.begin(), _ui_callbacks.end());
+        for (auto& cb : safe_copy)
+            cb.second(*this, _ctx);
+    }
 
     _wnd->clear(sf::Color(25, 25, 50));
 
@@ -107,15 +115,28 @@ void Window::render() {
                 _wnd->draw(*drawable);
             }
         }
+
+        if (camera->hud()) {
+            _wnd->setView(default_view);
+            for (auto drawable : *camera->hud()->_drawable_manager)
+                _wnd->draw(*drawable);
+        }
     }
 
     if (_drawable_manager) {
         _wnd->setView(default_view);
 
-        for (auto drawable : *_drawable_manager) {
+        for (auto drawable : *_drawable_manager)
             _wnd->draw(*drawable);
-        }
     }
+
+    {
+        auto safe_copy = std::vector(_render_callbacks.begin(), _render_callbacks.end());
+        for (auto& cb : safe_copy)
+            cb.second(*this);
+    }
+
+    _wnd->setView(default_view);
 
     nk_sfml_render(_nksfml, NK_ANTI_ALIASING_OFF, MAX_VERTEX_BUFFER, MAX_ELEMENT_BUFFER);
     _wnd->display();
@@ -135,12 +156,33 @@ void Window::is_visible(bool value) {
     _is_visible = value;
 }
 
-auto Window::getCurrentCoords() -> sf::Vector2f {
+auto Window::getMouseCoords() const -> scl::Vector2f {
     auto pos = _wnd->mapPixelToCoords(sf::Mouse::getPosition(*_wnd));
-    pos.y = -pos.y;
-    return pos;
+    return {pos.x, -pos.y};
 }
 
-void Window::setSize(uint32_t x, uint32_t y) {
+auto Window::getMouseCoords(const Camera& camera) const -> scl::Vector2f {
+    auto default_view = _wnd->getView();
+    _wnd->setView(camera._view);
+
+    auto res = getMouseCoords();
+    _wnd->setView(default_view);
+
+    return res;
+}
+
+void Window::size(uint32_t x, uint32_t y) {
     _wnd->setSize(sf::Vector2u(x, y));
+}
+
+scl::Vector2u Window::size() const {
+    auto sz = _wnd->getSize();
+
+    return {sz.x, sz.y};
+}
+
+scl::Vector2f Window::sizef() const {
+    auto sz = _wnd->getSize();
+
+    return {float(sz.x), float(sz.y)};
 }
