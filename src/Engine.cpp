@@ -9,7 +9,7 @@ Engine::Engine() = default;
 int Engine::run(int argc, char* argv[]) {
 
     onCreate();
-    mainUpdate();
+    onUpdate();
 
     return 0;
 }
@@ -18,11 +18,12 @@ void Engine::onCreate() {
     mainCreate();
 }
 
-void Engine::mainUpdate() {
+void Engine::onUpdate() {
     bool anyone_window_visible = true;
 
     while (anyone_window_visible) {
         engine_state().updateDeltaTime();
+        engine_state()._fps_update();
 
         auto wnds = std::vector(_windows.begin(), _windows.end());
 

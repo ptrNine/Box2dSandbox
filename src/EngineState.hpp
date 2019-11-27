@@ -27,7 +27,8 @@ private:
     }
 
 public:
-    float       fps            () { _fps.update(); return _fps.get(); }
+    void        _fps_update    () { _fps.update(); }
+    float       fps            () { return _fps.get(); }
     std::string fps_str        () { return std::to_string(fps()) + " fps"; }
     float       last_delta_time() { return _last_delta_time; }
 };

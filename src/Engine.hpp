@@ -6,6 +6,7 @@
 #include "graphics/Window.hpp"
 #include "graphics/ObjectManager.hpp"
 #include "game/PhysicSimulation.hpp"
+#include "graphics/FontManager.hpp"
 
 class Window;
 class PhysicSimulation;
@@ -31,9 +32,13 @@ public:
     // Ui callbacks
     Window::UiCallbackT uiPhysics(DrawableManagerSP& drawable_manager);
 
+    FontManager& font_manager() {
+        return _font_manager;
+    }
+
 private:
     void onCreate();
-    void mainUpdate();
+    void onUpdate();
     void mainCreate();
 
     void addWindow   (const std::shared_ptr<Window>& window, const WindowParams& params = WindowParams());
@@ -42,4 +47,5 @@ private:
 private:
     ska::flat_hash_map<std::shared_ptr<Window>, WindowParams> _windows;
     std::unique_ptr<PhysicSimulation> physic_simulation;
+    FontManager _font_manager;
 };

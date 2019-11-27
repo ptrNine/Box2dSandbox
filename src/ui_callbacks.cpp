@@ -7,32 +7,17 @@ Window::UiCallbackT Engine::uiPhysics(DrawableManagerSP& drawable_manager) {
         if (!physic_simulation)
             return;
 
-        if (nk_begin(ctx, "Physics", nk_rect(700, 20, 200, 300),
+        if (nk_begin(ctx, "Physics", nk_rect(200, 20, 200, 400),
                      NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|
                      NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE)) {
 
             nk_layout_row_dynamic(ctx, 25, 1);
             nk_label(ctx, engine_state().fps_str().data(), NK_TEXT_CENTERED);
 
-            /*
             nk_layout_row_dynamic(ctx, 25, 1);
-            if (nk_button_label(ctx, "Restart")) {
-                auto pause  = physic_simulation->on_pause();
-                auto debug_draw = physic_simulation->debug_draw();
-                auto freq   = physic_simulation->step_time();
-                auto iters1 = physic_simulation->position_iters();
-                auto iters2 = physic_simulation->velocity_iters();
+            nk_label(ctx, scl::String().sprintf(
+                    "Time: {:.2f} s.", physic_simulation->simulation_time()).data(), NK_TEXT_CENTERED);
 
-                physic_simulation = nullptr;
-                physic_simulation = PhysicSimulation::createUnique();
-                physic_simulation->debug_draw(debug_draw);
-                physic_simulation->step_time(freq);
-                physic_simulation->position_iters(iters1);
-                physic_simulation->velocity_iters(iters2);
-                physic_simulation->attachDrawableManager(drawable_manager);
-                physic_simulation->on_pause(pause);
-            }
-             */
 
             nk_layout_row_dynamic(ctx, 25, 1);
             if (nk_button_label(ctx, "Step")) {
@@ -50,6 +35,21 @@ Window::UiCallbackT Engine::uiPhysics(DrawableManagerSP& drawable_manager) {
             if (nk_checkbox_label(ctx, "Enable debug draw", &enable_debug_draw)) {
                 physic_simulation->debug_draw(enable_debug_draw);
             }
+
+            static int enable_adaptive_timestep = physic_simulation->adaptive_timestep();
+            nk_layout_row_dynamic(ctx, 25, 1);
+            if (nk_checkbox_label(ctx, "Adaptive timestep", &enable_adaptive_timestep))
+                physic_simulation->adaptive_timestep(enable_adaptive_timestep);
+
+            static int enable_force_update = physic_simulation->force_update();
+            nk_layout_row_dynamic(ctx, 25, 1);
+            if (nk_checkbox_label(ctx, "Force update", &enable_force_update))
+                    physic_simulation->force_update(enable_force_update);
+
+            nk_layout_row_dynamic(ctx, 25, 1);
+            auto slowdown = physic_simulation->slowdown_factor();
+            slowdown = nk_propertyd(ctx, "Slowdown factor", 1, slowdown, 30, 1, 1);
+            physic_simulation->slowdown_factor(slowdown);
 
             nk_layout_row_dynamic(ctx, 25, 1);
             int freq = (int)round(1.0 / physic_simulation->step_time());
