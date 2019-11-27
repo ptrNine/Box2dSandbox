@@ -1,8 +1,17 @@
-//
-// Created by slava on 21.10.19.
-//
+#pragma once
 
-#ifndef PLATFORMER_FONTMANAGER_HPP
-#define PLATFORMER_FONTMANAGER_HPP
+#include <scl/scl.hpp>
+#include <flat_hash_map.hpp>
 
-#endif //PLATFORMER_FONTMANAGER_HPP
+namespace sf {
+    class Font;
+}
+
+class FontManager {
+public:
+    sf::Font& get(const scl::String& path);
+    ~FontManager();
+
+private:
+    ska::flat_hash_map<scl::String, sf::Font*> _fonts;
+};
