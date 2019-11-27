@@ -4,23 +4,24 @@
 #include <ctime>
 #include <iostream>
 
+#include <fmt/format.h>
+#include <scl/scl.hpp>
+
+#include "types.hpp"
 #include "helper_macros.hpp"
-//#include <fmt/format.h>
 
 
 struct DateTimePoint {
     DateTimePoint(const std::tm& rTime, uint32_t milliseconds);
 
-    /*
     void print     (std::ostream& os = std::cout,
-                    const ftl::String& format = "DD.MM.YYYY hh:mm:ss") const;
-    auto to_string (const ftl::String& format = "DD.MM.YYYY hh:mm:ss") const -> ftl::String;
+                    const scl::String& format = "DD.MM.YYYY hh:mm:ss") const;
+    auto to_string (const scl::String& format = "DD.MM.YYYY hh:mm:ss") const -> scl::String;
 
     friend auto operator<< (std::ostream& os, const DateTimePoint& tp) -> std::ostream& {
         tp.print(os);
         return os;
     }
-     */
 
     uint32_t ms;
     uint32_t sec;
@@ -47,7 +48,6 @@ public:
 private:
     std::chrono::duration<intmax_t, std::nano> _duration;
 };
-
 
 
 class Timestamp {
@@ -81,9 +81,27 @@ private:
     ~GlobalTimer() = default;
 };
 
-
-
 inline GlobalTimer&	timer() { return GlobalTimer::instance(); }
+
+
+class Timer {
+public:
+    Timer() {
+        _last = timer().timestamp();
+    }
+
+    TimeDuration tick() {
+        auto timestamp = timer().timestamp();
+        auto diff = timestamp - _last;
+
+        _last = timestamp;
+        return diff;
+    }
+
+private:
+    Timestamp _last;
+};
+
 
 inline void sleep(uint32_t milliseconds) {
     auto cur = timer().timestamp();
@@ -91,18 +109,16 @@ inline void sleep(uint32_t milliseconds) {
 }
 
 
-/*
 namespace fmt {
     template<>
-    struct formatter<base::SDateTimePoint> {
+    struct formatter<DateTimePoint> {
         template<typename ParseContext>
         constexpr auto parse(ParseContext &ctx) { return ctx.begin(); }
 
         template<typename FormatContext>
-        auto format(const base::SDateTimePoint& date, FormatContext& ctx) {
+        auto format(const DateTimePoint& date, FormatContext& ctx) {
             return format_to(ctx.out(), "{}", date.to_string());
         }
     };
 }
- */
 

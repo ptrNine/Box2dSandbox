@@ -14,15 +14,14 @@ DateTimePoint::DateTimePoint(const std::tm &rTime, uint32_t milliseconds)  {
     year    = static_cast<uint32_t>(rTime.tm_year + 1900);
 }
 
-/*
-auto DateTimePoint::to_string(const ftl::String& format) const -> ftl::String {
+auto DateTimePoint::to_string(const scl::String& format) const -> scl::String {
     std::stringstream ss;
     print(ss, format);
-    return ftl::String(ss.str());
+    return scl::String(ss.str());
 }
 
-void DateTimePoint::print(std::ostream& os, const ftl::String& format) const {
-    ftl::String formats = "DMYhmsx";
+void DateTimePoint::print(std::ostream& os, const scl::String& format) const {
+    scl::String formats = "DMYhmsx";
     int   counter    = 0;
     Char8 lastFormat = '\0';
 
@@ -46,11 +45,10 @@ void DateTimePoint::print(std::ostream& os, const ftl::String& format) const {
             counter    = 1;
         }
 
-        if (formats.find_first_of(c) == ftl::String::npos && c != '\0')
+        if (formats.find_first_of(c) == scl::String::npos && c != '\0')
             os << c;
     }
 }
- */
 
 
 auto GlobalTimer::getSystemDateTime() -> DateTimePoint  {
