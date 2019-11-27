@@ -8,14 +8,17 @@ namespace sf {
     class Event;
 }
 
+#define CAMERA_MANIPULATOR_EVENT_CALLBACK(MANIPULATOR, CAMERA, EVENT, WINDOW) \
+(CameraManipulator& MANIPULATOR, Camera& CAMERA, const sf::Event& EVENT, const class Window& WINDOW)
+
 class CameraManipulator {
     friend class Camera;
 
-    using EventCallback   = std::function<void(class CameraManipulator&, class Camera&, const sf::Event&)>;
+    using EventCallback   = std::function<void(class CameraManipulator&, class Camera&, const sf::Event&, const class Window&)>;
     using RegularCallback = std::function<void(class CameraManipulator&, class Camera&, float delta_time)>;
 
 public:
-    DECLARE_SELF_FABRICS(CameraManipulator)
+    DECLARE_SELF_FABRICS(CameraManipulator);
 
     void attachEventCallback(const EventCallback& callback) {
         _event_callback = callback;
@@ -46,9 +49,9 @@ public:
     }
 
 private:
-    void updateEvents(class Camera& camera, const sf::Event& evt) {
+    void updateEvents(class Camera& camera, const sf::Event& evt, const class Window& wnd) {
         if (_event_callback)
-            _event_callback(*this, camera, evt);
+            _event_callback(*this, camera, evt, wnd);
     }
 
     void updateRegular(class Camera& camera, float delta_time) {
