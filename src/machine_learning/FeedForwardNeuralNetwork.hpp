@@ -47,6 +47,21 @@ namespace nnw {
             load(path);
         }
 
+        FeedForwardNeuralNetwork(FeedForwardNeuralNetwork&& ffnn) noexcept:
+                _neurons               (std::move(ffnn._neurons)),
+                _layers                (std::move(ffnn._layers )),
+                _weights               (std::move(ffnn._weights)),
+                _storage               (std::move(ffnn._storage)),
+                _input_layer_size      (ffnn._input_layer_size),
+                _learning_rate         (ffnn._input_layer_size),
+                _momentum              (ffnn._input_layer_size),
+                _current_batch         (ffnn._current_batch),
+                _batch_size            (ffnn._batch_size),
+                _new_batch_size        (ffnn._new_batch_size),
+                _backpropagate_counter (ffnn._backpropagate_counter),
+                _has_softmax_output    (ffnn._has_softmax_output)
+        {}
+
         FeedForwardNeuralNetwork(
                 const NeuronStorage&  neurons,
                 const SynapseStorage& synapses,
@@ -538,6 +553,17 @@ namespace nnw {
             _learning_rate *= multiplier;
         }
 
+        void foreach_weight(std::function<void(float&)>&& callback) {
+            for(auto weight : _weights)
+                callback(*weight);
+        }
+
+        void foreach_neuron(std::function<void(Neuron&)>&& callback) {
+            for (auto& layer : _layers)
+                for (auto& neuron : layer)
+                    callback(neuron);
+        }
+
         void deserialize(fft::Deserializer& ids) {
             auto header = StringT(nnw_ffnn_file_header().size(), ' ');
 
@@ -745,6 +771,18 @@ namespace nnw {
             auto ds    = fft::Deserializer(bytes);
 
             deserialize(ds);
+        }
+
+        size_t weights_count() const {
+            return _weights.size();
+        }
+
+        size_t input_layer_size() const {
+            return _layers.front().size();
+        }
+
+        size_t output_layer_size() const {
+            return _layers.back().size();
         }
 
     private:
