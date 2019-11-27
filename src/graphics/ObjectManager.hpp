@@ -11,14 +11,14 @@
 template <typename ObjectT, typename AttribT = void, class Enable = void>
 class ObjectManager;
 
-
+// Todo: refactor, its worst!
 // ObjectManager with no attributes
 
 #include <iostream>
 template <typename ObjectT, typename AttribT>
 class ObjectManager <ObjectT, AttribT, std::enable_if_t<std::is_same_v<AttribT, void>>> {
 public:
-    DECLARE_SELF_FABRICS(ObjectManager)
+    DECLARE_SELF_FABRICS(ObjectManager);
 
     ObjectManager           (const ObjectManager<ObjectT, AttribT>&) = delete;
     ObjectManager& operator=(const ObjectManager<ObjectT, AttribT>&) = delete;
@@ -41,10 +41,16 @@ public:
     }
 
     template <typename T>
-    void remove(T* object) {
+    auto remove(T*& object) {
         delete object;
         _storage.erase(object);
         object = nullptr;
+    }
+
+    template <typename T>
+    auto remove(const T*& object) {
+        delete object;
+        _storage.erase(object);
     }
 
     template <typename T>
@@ -124,10 +130,16 @@ public:
     }
 
     template <typename T>
-    void remove(T* object) {
+    auto remove(T*& object) {
         delete object;
         _storage.erase(object);
         object = nullptr;
+    }
+
+    template <typename T>
+    auto remove(const T*& object) {
+        delete object;
+        _storage.erase(object);
     }
 
     template <typename T>
@@ -192,10 +204,16 @@ public:
     }
 
     template <typename T>
-    void remove(T* object) {
+    auto remove(T*& object) {
         delete object;
         _storage.erase(object);
         object = nullptr;
+    }
+
+    template <typename T>
+    auto remove(const T*& object) {
+        delete object;
+        _storage.erase(object);
     }
 
     template <typename T>
@@ -271,10 +289,16 @@ public:
     }
 
     template <typename T>
-    void remove(T* object) {
+    auto remove(T*& object) {
         delete object;
         _storage.erase(object);
         object = nullptr;
+    }
+
+    template <typename T>
+    auto remove(const T*& object) {
+        delete object;
+        _storage.erase(object);
     }
 
     template <typename T>
