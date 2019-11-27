@@ -83,6 +83,14 @@ namespace nnw {
             };
         }
 
+        auto Tanh() {
+            return ActivationFunction{
+                    .type       = ActivationTypes::Tanh,
+                    .normal     = tanh,
+                    .derivative = derivative::tanh
+            };
+        }
+
         auto RELU() {
             return ActivationFunction{
                     .type       = ActivationTypes::RELU,
