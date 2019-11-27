@@ -32,6 +32,10 @@ namespace nnw {
             return std::uniform_real_distribution<T>(min, max)(_mt);
         }
 
+        void init_mt19937() {
+            _mt = std::mt19937(static_cast<size_t>(std::time(nullptr)));
+        }
+
     private:
         GlobalStateHelper() /* : _mt(static_cast<size_t>(std::time(nullptr))) */ {}
         ~GlobalStateHelper() = default;
@@ -53,6 +57,10 @@ namespace nnw {
         template <typename T>
         T uniform_dist(T min, T max) {
             return GlobalStateHelper::instance().uniform_dist(min, max);
+        }
+
+        inline void randomize() {
+            GlobalStateHelper::instance().init_mt19937();
         }
     }
 }
