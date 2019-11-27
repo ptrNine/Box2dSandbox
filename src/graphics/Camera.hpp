@@ -3,6 +3,7 @@
 #include <functional>
 #include <SFML/Graphics/Transform.hpp>
 #include <SFML/Graphics/View.hpp>
+#include <scl/scl.hpp>
 
 #include "DrawableManager.hpp"
 #include "../core/helper_macros.hpp"
@@ -17,25 +18,17 @@ class Camera {
 public:
     friend class Window;
 
+    using HUDSP               = std::shared_ptr<class HUD>;
     using DrawableManagerSP   = std::shared_ptr<DrawableManager>;
     using CameraManipulatorSP = std::shared_ptr<CameraManipulator>;
     using EventCallback       = std::function<void(Camera&, const sf::Event&, const class Window&)>;
 
 public:
-    DECLARE_SELF_FABRICS(Camera)
+    DECLARE_SELF_FABRICS(Camera);
 
-    Camera(const std::string_view& name = "",
-           float aspect_ratio = 16.f/9.f,
-           float width = 30.f
-                   ) : _name(name), _aspect_ratio(aspect_ratio), _eye_width(width)
-    {
-        _view.setSize(_eye_width, _eye_width / _aspect_ratio);
-        _view.setCenter(0.f, 0.f);
-    }
+    Camera(const std::string_view& name = "", float aspect_ratio = 16.f/9.f, float width = 30.f);
 
-    ~Camera() {
-        std::cout << "Destroy [" << _name << "]" << std::endl;
-    }
+    ~Camera();
 
     void attachDrawableManager(const DrawableManagerSP &drawable_manager) {
         _drawable_manager = drawable_manager;
@@ -51,6 +44,22 @@ public:
 
     auto drawable_manager() const {
         return _drawable_manager;
+    }
+
+    void attachHUD(const HUDSP& hud) {
+        _hud = hud;
+    }
+
+    auto detachHUD() {
+        HUDSP res = _hud;
+
+        _hud = nullptr;
+
+        return res;
+    }
+
+    auto hud() const {
+        return _hud;
     }
 
     void attachCameraManipulator(const CameraManipulatorSP& camera_manipulator) {
@@ -73,6 +82,10 @@ public:
         _view.move(x, -y);
     }
 
+    void move(const scl::Vector2f& displ) {
+        _view.move(displ.x(), displ.y());
+    }
+
     void rotate(float angle) {
         _view.rotate(angle);
     }
@@ -81,10 +94,18 @@ public:
         _view.setViewport(sf::FloatRect(left, top, width, height));
     }
 
-    void setSize(float width, float height) {
+    void size(float width, float height) {
         _aspect_ratio = width / height;
         _eye_width = width;
         recalcSizeFromEyeAspect();
+    }
+
+    void size(const scl::Vector2f& isize) {
+        size(isize.x(), isize.y());
+    }
+
+    auto size() const -> scl::Vector2f {
+        return {_view.getSize().x, _view.getSize().y};
     }
 
     void aspect_ratio(float value) {
@@ -113,6 +134,14 @@ public:
         _view.setCenter(x, y);
     }
 
+    void position(const scl::Vector2f& pos) {
+        position(pos.x(), pos.y());
+    }
+
+    auto position() const -> scl::Vector2f {
+        return {_view.getCenter().x, _view.getCenter().y};
+    }
+
 private:
     void recalcSizeFromEyeAspect() {
         _view.setSize(_eye_width, _eye_width / _aspect_ratio);
@@ -130,4 +159,5 @@ private:
     float             _eye_width = 10;
 
     CameraManipulatorSP _manipulator;
+    HUDSP               _hud;
 };
