@@ -57,11 +57,13 @@ set(_libraries ${SFML_LIBS} GL GLEW Box2D -pthread ${SCM_STATIC_LIBRARIES} fmt)
 
 add_executable(platformer main.cpp ${${PROJECT_NAME}_sources})
 add_executable(physic_body_constructor physic_body_constructor.cpp ${${PROJECT_NAME}_sources})
+add_executable(mnist_test mnist_test.cpp)
 #add_executable(walk_neuro_evolution walk_neuro_evolution.cpp ${${PROJECT_NAME}_sources})
 #add_executable(stand_neuroevolution stand_neuroevolution.cpp ${${PROJECT_NAME}_sources})
 
 
 target_link_libraries(platformer ${_libraries})
 target_link_libraries(physic_body_constructor ${_libraries})
+target_link_libraries(mnist_test -pthread ${SCM_STATIC_LIBRARIES} fmt)
 #target_link_libraries(walk_neuro_evolution ${_libraries})
 #target_link_libraries(stand_neuroevolution ${_libraries})
