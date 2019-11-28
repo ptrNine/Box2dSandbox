@@ -13,3 +13,6 @@
 [submodule "remote/gainput"]
 	path = remote/gainput
 	url = https://github.com/jkuhlmann/gainput
+[submodule "remote/cpp-httplib"]
+	path = remote/cpp-httplib
+	url = https://github.com/yhirose/cpp-httplib
