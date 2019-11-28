@@ -18,6 +18,7 @@ git_submodule_update()
 git_submodule_build(SimpleConfigManager)
 git_submodule_build(SimpleContainersLibrary INSTALL_SUB_DEPS)
 git_submodule_build(gainput)
+git_submodule_build(cpp-httplib)
 
 set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/fakeroot)
 
