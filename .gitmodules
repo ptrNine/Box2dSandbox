@@ -16,3 +16,6 @@
 [submodule "remote/cpp-httplib"]
 	path = remote/cpp-httplib
 	url = https://github.com/yhirose/cpp-httplib
+[submodule "remote/zlib"]
+	path = remote/zlib
+	url = https://github.com/madler/zlib
