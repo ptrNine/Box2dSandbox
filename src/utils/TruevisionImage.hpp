@@ -3,12 +3,16 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <scl/vector.hpp>
 
-#include "SimpleSerializer.hpp"
+#include "ReaderWriter.hpp"
 
 namespace fft {
     using FloatT  = float;
     using StringT = std::string;
+
+    template <typename T, typename AllocT>
+    using VectorT = scl::Vector<T, AllocT>;
 
     struct Color24 {
         Color24() = default;
@@ -45,14 +49,14 @@ namespace fft {
             _data.resize(_width * _height);
         }
 
-        ColorMap(ColorMap&& map): _width(map._width), _height(map._height), _data(std::move(map._data)) {}
+        ColorMap(ColorMap&& map) noexcept : _width(std::move(map._width)), _height(std::move(map._height)), _data(std::move(map._data)) {}
 
         T* operator[] (size_t i) const {
             return const_cast<T*>(_data.data()) + (i * _width);
         }
 
         operator bool() const {
-            return _data;
+            return !_data.empty();
         }
 
         size_t width() const {
@@ -72,7 +76,7 @@ namespace fft {
         }
 
     private:
-        std::vector<T> _data;
+        scl::Vector<T> _data;
         size_t   _width  = 0;
         size_t   _height = 0;
     };
@@ -146,19 +150,19 @@ namespace fft {
         void load(const StringT& path) {
             delete [] _data;
 
-            auto ds = FileDeserializer(path);
+            auto ds = Reader(path);
 
             ds.skip(2);
-            _type = ds.pop<Type>();
+            _type = ds.read<Type>();
 
             if (!check_type(_type))
                 throw TtfException("Unsupported ttf image type");
 
             ds.skip(9);
-            _width  = ds.pop<uint16_t>();
-            _height = ds.pop<uint16_t>();
+            _width  = ds.read<uint16_t>();
+            _height = ds.read<uint16_t>();
 
-            auto bpp = ds.pop<uint8_t>();
+            auto bpp = ds.read<uint8_t>();
 
             if (_type == Type::Monochrome && bpp != 8)
                 throw TtfException("Unknown bit per pixel in monochrome image: " + std::to_string(bpp));
@@ -169,33 +173,33 @@ namespace fft {
             ds.skip(1);
 
             _data = new uint8_t[_width * _height * bytes_per_pixel(_type)]();
-            ds.pop(_data, _width * _height * bytes_per_pixel(_type));
+            ds.read(_data, _width * _height * bytes_per_pixel(_type));
         }
 
         void save(const StringT& path) const {
-            auto serializer = fft::Serializer();
+            auto w = Writer();
             // Header
-            serializer.push<uint8_t>(0); // Identifier (no ID)
-            serializer.push<uint8_t>(0); // Color map type (no map)
-            serializer.push<uint8_t>(static_cast<uint8_t>(_type)); // TrueColor type
-            serializer.zero_fill(5); // color map (empty)
+            w.write<uint8_t>(0); // Identifier (no ID)
+            w.write<uint8_t>(0); // Color map type (no map)
+            w.write<uint8_t>(static_cast<uint8_t>(_type)); // TrueColor type
+            w.zero_fill(5); // color map (empty)
 
-            serializer.push<uint16_t>(0); // pos X
-            serializer.push<uint16_t>(0); // pos Y
-            serializer.push<uint16_t>(static_cast<uint16_t>(_width)); // size X
-            serializer.push<uint16_t>(static_cast<uint16_t>(_height)); // size Y
-            serializer.push<uint8_t>(static_cast<uint8_t>(bytes_per_pixel(_type) * 8)); // 24 bits per pixel
-            serializer.zero_fill(1);      // image descriptor
+            w.write<uint16_t>(0); // pos X
+            w.write<uint16_t>(0); // pos Y
+            w.write<uint16_t>(static_cast<uint16_t>(_width)); // size X
+            w.write<uint16_t>(static_cast<uint16_t>(_height)); // size Y
+            w.write<uint8_t>(static_cast<uint8_t>(bytes_per_pixel(_type) * 8)); // 24 bits per pixel
+            w.zero_fill(1);      // image descriptor
 
-            serializer.push(_data, _width * _height * bytes_per_pixel(_type));
+            w.write(_data, _width * _height * bytes_per_pixel(_type));
 
             // Footer
-            serializer.zero_fill(8);
-            serializer.push("TRUEVISION-XFILE");
-            serializer.push('.');
-            serializer.push<uint8_t>(0);
+            w.zero_fill(8);
+            w.write(StringT("TRUEVISION-XFILE"));
+            w.write('.');
+            w.write<uint8_t>(0);
 
-            serializer.save_to(path);
+            w.attach_to(path);
         }
 
         operator bool() const {
