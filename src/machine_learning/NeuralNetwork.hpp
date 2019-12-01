@@ -663,5 +663,4 @@ namespace nnw {
 
         scl::Vector<scl::Vector<size_t>> _layers;
     };
-
 }

@@ -77,5 +77,4 @@ namespace nnw {
         size_t   _size = 0;
         size_t   _pos  = 0;
     };
-
 }
