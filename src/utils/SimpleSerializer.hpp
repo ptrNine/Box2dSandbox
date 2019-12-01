@@ -7,6 +7,7 @@
 namespace fft {
     using StringT = std::string;
 
+
     template <typename T>
     T swap_endian(const T& a) {
         T b = 0;
@@ -84,8 +85,9 @@ namespace fft {
             return _ifs.eof();
         }
 
+        template <typename ContainerT = std::vector<uint8_t>>
         auto read_all_buffered(size_t buffer_size = 1024) {
-            auto res = std::vector<uint8_t>();
+            auto res = ContainerT();
 
             size_t old_size = 0;
 
