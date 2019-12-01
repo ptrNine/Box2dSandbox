@@ -11,7 +11,7 @@
 #include "Neuron.hpp"
 #include "NeuronModel.hpp"
 #include "SynapseModel.hpp"
-#include "../file_formats/SimpleSerializer.hpp"
+#include "../utils/ReaderWriter.hpp"
 
 namespace nnw {
     inline StringT nnw_ffnn_file_header() {
@@ -53,8 +53,8 @@ namespace nnw {
                 _weights               (std::move(ffnn._weights)),
                 _storage               (std::move(ffnn._storage)),
                 _input_layer_size      (ffnn._input_layer_size),
-                _learning_rate         (ffnn._input_layer_size),
-                _momentum              (ffnn._input_layer_size),
+                _learning_rate         (ffnn._learning_rate),
+                _momentum              (ffnn._momentum),
                 _current_batch         (ffnn._current_batch),
                 _batch_size            (ffnn._batch_size),
                 _new_batch_size        (ffnn._new_batch_size),
@@ -183,7 +183,7 @@ namespace nnw {
         }
 
         template <bool _MultiThread = true>
-        auto forward_pass(const std::vector<FloatT>& input) -> std::vector<FloatT> {
+        auto forward_pass(const scl::Vector<FloatT>& input) -> scl::Vector<FloatT> {
             if (input.size() != _input_layer_size)
                 throw Exception("FeedForwardNeuralNetwork::forward_pass(): "
                                 "input vector size != input layer neurons count");
@@ -238,7 +238,7 @@ namespace nnw {
                 activations::layer::softmax(_layers.back());
 
             // Output
-            auto res = std::vector<FloatT>(_layers.back().size());
+            auto res = scl::Vector<FloatT>(_layers.back().size());
 
             for (size_t i = 0; i < _layers.back().size(); ++i)
                 res[i] = _layers.back()[i].state.output;
@@ -255,7 +255,7 @@ namespace nnw {
         }
 
         template <bool _MultiThread = true>
-        void backpropagate_sgd(const std::vector<FloatT>& ideal) {
+        void backpropagate_sgd(const scl::Vector<FloatT>& ideal) {
             if (ideal.size() != _layers.back().size())
                 throw Exception("FeedForwardNeuralNetwork::backpropagate_sgd(): "
                                 "ideal vector size != output layer neurons count");
@@ -348,7 +348,7 @@ namespace nnw {
         }
 
         template <bool _MultiThread = true>
-        void backpropagate_bgd(const std::vector<FloatT>& ideal) {
+        void backpropagate_bgd(const scl::Vector<FloatT>& ideal) {
             if (ideal.size() != _layers.back().size())
                 throw Exception("FeedForwardNeuralNetwork::backpropagate_bgd(): "
                                 "ideal vector size != output layer neurons count");
@@ -564,58 +564,58 @@ namespace nnw {
                     callback(neuron);
         }
 
-        void deserialize(fft::Deserializer& ids) {
+        void deserialize(Reader& ids) {
             auto header = StringT(nnw_ffnn_file_header().size(), ' ');
 
-            ids.pop(header.data(), header.size());
+            ids.read(header.data(), header.size());
 
             if (header != nnw_ffnn_file_header())
                 throw Exception("FeedForwardNeuralNetwork::deserialize(): wrong header: " +
                                 header + " vs " + nnw_ffnn_file_header());
 
             md5::Block128 md5;
-            ids.pop(md5.lo);
-            ids.pop(md5.hi);
+            ids.read(md5.lo);
+            ids.read(md5.hi);
 
-            auto bytes = std::vector<uint8_t>(ids.pop<uint64_t>());
+            auto bytes = std::vector<uint8_t>(ids.read<uint64_t>());
 
-            ids.pop(bytes.data(), bytes.size());
+            ids.read(bytes.data(), bytes.size());
 
             if (md5 != md5::md5(bytes.data(), bytes.size()))
                 throw Exception("FeedForwardNeuralNetwork::deserialize(): md5 checksum not valid");
 
-            auto ds = fft::Deserializer(bytes);
+            auto ds = Reader(bytes.data(), bytes.size());
 
             _storage.unsafe_free();
             _neurons.unsafe_unbound();
             _layers .unsafe_unbound();
             _weights.unsafe_unbound();
 
-            _storage.init(ds.pop<uint64_t>());
+            _storage.init(ds.read<uint64_t>());
 
-            _input_layer_size      = ds.pop<uint64_t>();
-            _learning_rate         = ds.pop<FloatT>();
-            _momentum              = ds.pop<FloatT>();
-            _current_batch         = ds.pop<uint64_t>();
-            _batch_size            = ds.pop<uint64_t>();
-            _new_batch_size        = ds.pop<uint64_t>();
-            _backpropagate_counter = ds.pop<uint64_t>();
-            _has_softmax_output    = ds.pop<bool>();
+            _input_layer_size      = ds.read<uint64_t>();
+            _learning_rate         = ds.read<FloatT>();
+            _momentum              = ds.read<FloatT>();
+            _current_batch         = ds.read<uint64_t>();
+            _batch_size            = ds.read<uint64_t>();
+            _new_batch_size        = ds.read<uint64_t>();
+            _backpropagate_counter = ds.read<uint64_t>();
+            _has_softmax_output    = ds.read<bool>();
 
             std::unordered_map<uint64_t, Neuron*> id_neuron_map;
 
-            size_t layers_count = ds.pop<uint64_t>();
+            size_t layers_count = ds.read<uint64_t>();
             _layers.init(_storage, layers_count);
 
             size_t weights_count = 0;
             for (auto& layer : _layers) {
-                size_t layer_size = ds.pop<uint64_t>();
+                size_t layer_size = ds.read<uint64_t>();
                 layer.init(_storage, layer_size);
 
                 for (auto& neuron : layer) {
-                    neuron.id = ds.pop<uint64_t>();
-                    neuron.connections.input.init(_storage, ds.pop<uint64_t>());
-                    neuron.connections.output.init(_storage, ds.pop<uint64_t>());
+                    neuron.id = ds.read<uint64_t>();
+                    neuron.connections.input.init(_storage, ds.read<uint64_t>());
+                    neuron.connections.output.init(_storage, ds.read<uint64_t>());
 
                     weights_count += neuron.connections.output.size();
 
@@ -623,7 +623,7 @@ namespace nnw {
                 }
             }
 
-            size_t neurons_count = ds.pop<uint64_t>();
+            size_t neurons_count = ds.read<uint64_t>();
 
             if (neurons_count != id_neuron_map.size())
                 throw Exception("FeedForwardNeuralNetwork::deserialize(): data was corrupted (but hash is valid!?)");
@@ -639,40 +639,39 @@ namespace nnw {
             size_t connection_counter = 0;
 
             for (size_t i = 0; i < neurons_count; ++i) {
-                size_t id = ds.pop<uint64_t>();
+                size_t id = ds.read<uint64_t>();
 
                 Neuron& neuron = *id_neuron_map[id];
 
-                neuron.state.input  = ds.pop<FloatT>();
-                neuron.state.output = ds.pop<FloatT>();
-                neuron.state.delta  = ds.pop<FloatT>();
+                neuron.state.input  = ds.read<FloatT>();
+                neuron.state.output = ds.read<FloatT>();
+                neuron.state.delta  = ds.read<FloatT>();
 
-                auto activation_type = static_cast<ActivationTypes>(ds.pop<uint64_t>());
+                auto activation_type = static_cast<ActivationTypes>(ds.read<uint64_t>());
 
                 neuron.activation_func = activations::is_parametrized_type(activation_type) ?
-                        activations::create_parametrized_from_type(activation_type, ds.pop<FloatT>()) :
+                        activations::create_parametrized_from_type(activation_type, ds.read<FloatT>()) :
                         activations::create_from_type(activation_type);
 
                 connection_counter += neuron.connections.output.size();
             }
 
-            if (connection_counter != ds.pop<uint64_t>())
+            if (connection_counter != ds.read<uint64_t>())
                 throw Exception("FeedForwardNeuralNetwork::deserialize(): data was corrupted (but hash is valid!?)");
 
             // Read all connections
             for (size_t i = 0; i < neurons_count; ++i) {
-                auto back = id_neuron_map[ds.pop<uint64_t>()];
+                auto back = id_neuron_map[ds.read<uint64_t>()];
 
                 for (auto& connection : back->connections.output) {
-                    connection.neuron = id_neuron_map[ds.pop<uint64_t>()];
+                    connection.neuron = id_neuron_map[ds.read<uint64_t>()];
 
                     auto& input = connection.neuron->connections.input.assign_back(
-                            {.neuron = back, .weight = ds.pop<FloatT>()});
+                            {.neuron = back, .weight = ds.read<FloatT>()});
 
                     connection.weight = &input.weight;
-                    connection.last_delta_weight = ds.pop<FloatT>();
-                    connection.grad_sum = ds.pop<FloatT>();
-
+                    connection.last_delta_weight = ds.read<FloatT>();
+                    connection.grad_sum = ds.read<FloatT>();
                 }
             }
 
@@ -686,91 +685,87 @@ namespace nnw {
                     _weights.assign_back(connection.weight);
         }
 
-        void serialize(fft::Serializer& out_serializer) const {
-            auto serializer = fft::Serializer();
+        void serialize(Writer& out_serializer) const {
+            auto w = Writer();
 
-            serializer.push<uint64_t>(_storage.max_size());
-            serializer.push<uint64_t>(_input_layer_size);
-            serializer.push<FloatT>  (_learning_rate);
-            serializer.push<FloatT>  (_momentum);
-            serializer.push<uint64_t>(_current_batch);
-            serializer.push<uint64_t>(_batch_size);
-            serializer.push<uint64_t>(_new_batch_size);
-            serializer.push<uint64_t>(_backpropagate_counter);
-            serializer.push<bool>    (_has_softmax_output);
+            w.write<uint64_t>(_storage.max_size());
+            w.write<uint64_t>(_input_layer_size);
+            w.write<FloatT>  (_learning_rate);
+            w.write<FloatT>  (_momentum);
+            w.write<uint64_t>(_current_batch);
+            w.write<uint64_t>(_batch_size);
+            w.write<uint64_t>(_new_batch_size);
+            w.write<uint64_t>(_backpropagate_counter);
+            w.write<bool>    (_has_softmax_output);
 
             // Layers
-            serializer.push<uint64_t>(_layers.size());
+            w.write<uint64_t>(_layers.size());
             for (auto& layer : _layers) {
-                serializer.push<uint64_t>(layer.size());
+                w.write<uint64_t>(layer.size());
 
                 for (auto& neuron : layer) {
-                    serializer.push<uint64_t>(neuron.id);
-                    serializer.push<uint64_t>(neuron.connections.input.size());
-                    serializer.push<uint64_t>(neuron.connections.output.size());
+                    w.write<uint64_t>(neuron.id);
+                    w.write<uint64_t>(neuron.connections.input.size());
+                    w.write<uint64_t>(neuron.connections.output.size());
                 }
             }
 
             size_t connection_counter = 0;
 
             // Neurons
-            serializer.push<uint64_t>(_neurons.size());
+            w.write<uint64_t>(_neurons.size());
             for (auto neuron : _neurons) {
-                serializer.push<uint64_t>(neuron->id);
-                serializer.push<FloatT>  (neuron->state.input);
-                serializer.push<FloatT>  (neuron->state.output);
-                serializer.push<FloatT>  (neuron->state.delta);
+                w.write<uint64_t>(neuron->id);
+                w.write<FloatT>  (neuron->state.input);
+                w.write<FloatT>  (neuron->state.output);
+                w.write<FloatT>  (neuron->state.delta);
 
                 // Activation functions
-                serializer.push<uint64_t>((uint64_t)neuron->activation_func.type);
+                w.write<uint64_t>((uint64_t)neuron->activation_func.type);
 
                 if (auto parameter = activations::get_parameter(neuron->activation_func); parameter)
-                    serializer.push<FloatT>(*parameter);
+                    w.write<FloatT>(*parameter);
 
                 connection_counter += neuron->connections.output.size(); // Increase connection counter
             }
 
             // Connections
-            serializer.push<uint64_t>(connection_counter);
+            w.write<uint64_t>(connection_counter);
             for (auto neuron : _neurons) {
-                serializer.push<uint64_t>(neuron->id);
+                w.write<uint64_t>(neuron->id);
 
                 for (auto& connection : neuron->connections.output) {
-                    serializer.push<uint64_t>(connection.neuron->id);
-                    serializer.push<FloatT>  (*connection.weight);
-                    serializer.push<FloatT>  (connection.last_delta_weight);
-                    serializer.push<FloatT>  (connection.grad_sum);
+                    w.write<uint64_t>(connection.neuron->id);
+                    w.write<FloatT>  (*connection.weight);
+                    w.write<FloatT>  (connection.last_delta_weight);
+                    w.write<FloatT>  (connection.grad_sum);
                 }
             }
 
-            out_serializer.push(nnw_ffnn_file_header().data(), nnw_ffnn_file_header().size());
+            out_serializer.write(nnw_ffnn_file_header().data(), nnw_ffnn_file_header().size());
 
-            auto md5 = md5::md5(serializer.unsafe_data(), serializer.size());
-            out_serializer.push(md5.lo);
-            out_serializer.push(md5.hi);
+            std::vector<uint8_t> data;
+            w >> data;
 
-            out_serializer.push<uint64_t>(serializer.size());
+            auto md5 = md5::md5(data.data(), data.size());
+            out_serializer.write(md5.lo);
+            out_serializer.write(md5.hi);
 
-            out_serializer.push(serializer.unsafe_data(), serializer.size());
+            out_serializer.write<uint64_t>(data.size());
+
+            out_serializer.write(data.data(), data.size());
         }
 
         void save(const StringT& path) const {
             std::cout << "FeedForwardNeuralNetwork::save(): save to '" + path + "'" << std::endl;
-            auto file = fft::FileSerializer(path);
-            auto sr   = fft::Serializer();
-
-            serialize(sr);
-
-            file.push(sr.unsafe_data(), sr.size());
+            auto file = Writer(path);
+            serialize(file);
         }
 
         void load(const StringT& path) {
             std::cout << "FeedForwardNeuralNetwork::load(): load from '" + path + "'" << std::endl;
-            auto file  = fft::FileDeserializer(path);
-            auto bytes = file.read_all_buffered();
-            auto ds    = fft::Deserializer(bytes);
-
-            deserialize(ds);
+            auto file = Reader(path);
+            deserialize(file);
         }
 
         size_t weights_count() const {

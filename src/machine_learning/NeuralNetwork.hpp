@@ -99,8 +99,8 @@ namespace nnw {
          * @return vector with created neurons
          */
         template <typename ... ArgsT>
-        auto new_neuron_group(size_t count, const ArgsT &... args) -> std::vector<NeuronProvider> {
-            auto neurons = std::vector<NeuronProvider>();
+        auto new_neuron_group(size_t count, const ArgsT &... args) -> scl::Vector<NeuronProvider> {
+            auto neurons = scl::Vector<NeuronProvider>();
             neurons.reserve(count);
 
             for (size_t i = 0; i < count; ++i)
@@ -224,15 +224,15 @@ namespace nnw {
 
         /**
          * Perform all-over connection between two groups of neurons
-         * @param backward - first group of neurons (std::vector)
-         * @param forward - second group of neurons (std::vector)
-         * @return - group of created synapses (std::vector)
+         * @param backward - first group of neurons (scl::Vector)
+         * @param forward - second group of neurons (scl::Vector)
+         * @return - group of created synapses (scl::Vector)
          */
         auto allover_connect(
-                const std::vector<NeuronProvider>& backward,
-                const std::vector<NeuronProvider>& forward) -> std::vector<SynapseProvider>
+                const scl::Vector<NeuronProvider>& backward,
+                const scl::Vector<NeuronProvider>& forward) -> scl::Vector<SynapseProvider>
         {
-            auto synapses = std::vector<SynapseProvider>();
+            auto synapses = scl::Vector<SynapseProvider>();
             synapses.reserve(backward.size() * forward.size());
 
             for (auto& back : backward)
@@ -245,14 +245,14 @@ namespace nnw {
         /**
          * Perform all-over connection between one neuron and group of neurons
          * @param backward - neuron
-         * @param forward - group of neurons (std::vector)
-         * @return - group of created synapses (std::vector)
+         * @param forward - group of neurons (scl::Vector)
+         * @return - group of created synapses (scl::Vector)
          */
         auto allover_connect(
                 const NeuronProvider& backward,
-                const std::vector<NeuronProvider>& forward) -> std::vector<SynapseProvider>
+                const scl::Vector<NeuronProvider>& forward) -> scl::Vector<SynapseProvider>
         {
-            auto synapses = std::vector<SynapseProvider>();
+            auto synapses = scl::Vector<SynapseProvider>();
             synapses.reserve(forward.size());
 
             for (auto &front : forward)
@@ -263,15 +263,15 @@ namespace nnw {
 
         /**
          * Perform all-over connection between group of neurons and one neuron
-         * @param backward - group of neurons (std::vector)
+         * @param backward - group of neurons (scl::Vector)
          * @param forward - neuron
-         * @return - group of created synapses (std::vector)
+         * @return - group of created synapses (scl::Vector)
          */
         auto allover_connect(
-                const std::vector<NeuronProvider>& backward,
-                const NeuronProvider& forward) -> std::vector<SynapseProvider>
+                const scl::Vector<NeuronProvider>& backward,
+                const NeuronProvider& forward) -> scl::Vector<SynapseProvider>
         {
-            auto synapses = std::vector<SynapseProvider>();
+            auto synapses = scl::Vector<SynapseProvider>();
             synapses.reserve(backward.size());
 
             for (auto& back : backward)
@@ -303,7 +303,7 @@ namespace nnw {
 //         * Mark neurons as input neurons
 //         * @param neurons - vector of neurons
 //         */
-//        void mark_as_input(const std::vector<NeuronProvider>& neurons) {
+//        void mark_as_input(const scl::Vector<NeuronProvider>& neurons) {
 //            _layers.clear();
 //
 //            if (neurons.empty())
@@ -443,7 +443,7 @@ namespace nnw {
 
 
             bool is_anyone_found = true;
-            std::vector<size_t> new_layer_neurons;
+            scl::Vector<size_t> new_layer_neurons;
 
             while (is_anyone_found) {
 
@@ -661,7 +661,7 @@ namespace nnw {
 
         size_t _batch_size = 1;
 
-        std::vector<std::vector<size_t>> _layers;
+        scl::Vector<scl::Vector<size_t>> _layers;
     };
 
 }

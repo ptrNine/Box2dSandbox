@@ -4,13 +4,19 @@
 #include <vector>
 #include <memory>
 
+#include <scl/scl.hpp>
+
 namespace nnw {
     using FloatT  = float;
     using StringT = std::string;
 
-    using NeuronStorage   = std::vector<class NeuronModel>;
-    using SynapseStorage  = std::vector<class SynapseModel>;
-    using LayerStorage    = std::vector<std::vector<size_t>>;
+
+    template <typename T, typename AllocT = std::allocator<T>>
+    using VectorT = scl::Vector<T, AllocT>;
+
+    using NeuronStorage   = VectorT<class NeuronModel>;
+    using SynapseStorage  = VectorT<class SynapseModel>;
+    using LayerStorage    = VectorT<VectorT<size_t>>;
 
     using SharedNS        = std::shared_ptr<NeuronStorage>;
     using SharedSS        = std::shared_ptr<SynapseStorage>;
