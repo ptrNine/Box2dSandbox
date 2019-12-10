@@ -11,6 +11,9 @@ namespace sf {
 #define CAMERA_MANIPULATOR_EVENT_CALLBACK(MANIPULATOR, CAMERA, EVENT, WINDOW) \
 (CameraManipulator& MANIPULATOR, Camera& CAMERA, const sf::Event& EVENT, const class Window& WINDOW)
 
+#define CAMERA_MANIPULATOR_REGULAR_CALLBACK(manipulator, camera, delta_time) \
+(CameraManipulator& manipulator, Camera& camera, float delta_time)
+
 class CameraManipulator {
     friend class Camera;
 
