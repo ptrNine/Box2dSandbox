@@ -5,6 +5,7 @@
 #include <scl/vector2.hpp>
 #include <Box2D/Dynamics/b2WorldCallbacks.h>
 #include "PhysicBodyBase.hpp"
+#include "JointProcessor.hpp"
 
 class PhysicHumanBody : public PhysicBodyBase {
     friend class PhysicSimulation;
@@ -135,49 +136,35 @@ public:
 
     static constexpr struct { float min; float max; }
             joints_angle_limits[BodyJoint_COUNT] {
-            { .min = -M_PIf32,        .max = M_PI_2f32 },      // Chest with Left Shoulder
-            { .min = -M_PIf32,        .max = M_PI_2f32 },      // Chest with Right Shoulder
-            { .min = -M_PIf32 + 0.4f, .max = 0.1f },           // Left Shoulder with Left Forearm
-            { .min = -M_PIf32 + 0.4f, .max = 0.1f },           // Right Shoulder with Right Forearm
-            { .min = -M_PIf32 + 0.4f, .max = M_PI_4f32 },      // Chest with Left Thigh
-            { .min = -M_PIf32 + 0.4f, .max = M_PI_4f32 },      // Chest with Right Thigh
-            { .min = -0.1f,           .max = M_PIf32 - 0.4f }, // Left Thigh with Left Thigh
-            { .min = -0.1f,           .max = M_PIf32 - 0.4f }, // Right Thigh with Right Thigh
-            { .min = -0.8f,           .max = 0.8f }            // Head with Chest
+            { .min = -M_PIf32,        .max = M_PI_2f32 + 0.2f }, // Chest with Left Shoulder
+            { .min = -M_PIf32,        .max = M_PI_2f32 + 0.2f }, // Chest with Right Shoulder
+            { .min = -M_PIf32 + 0.4f, .max = 0.1f },             // Left Shoulder with Left Forearm
+            { .min = -M_PIf32 + 0.4f, .max = 0.1f },             // Right Shoulder with Right Forearm
+            { .min = -M_PIf32 + 0.4f, .max = M_PI_4f32 },        // Chest with Left Thigh
+            { .min = -M_PIf32 + 0.4f, .max = M_PI_4f32 },        // Chest with Right Thigh
+            { .min = -0.1f,           .max = M_PIf32 - 0.4f },   // Left Thigh with Left Thigh
+            { .min = -0.1f,           .max = M_PIf32 - 0.4f },   // Right Thigh with Right Thigh
+            { .min = -0.8f,           .max = 0.8f }              // Head with Chest
     };
 
     static constexpr struct { BodyPart what; BodyPart with; }
-            disabled_collisions[] {
-            { .what = BodyPartChest,  .with = BodyPartThighL },
-            { .what = BodyPartChest,  .with = BodyPartThighR },
-            { .what = BodyPartChest,  .with = BodyPartHandL  },
-            { .what = BodyPartChest,  .with = BodyPartHandR  },
-            { .what = BodyPartChest,  .with = BodyPartArmL   },
-            { .what = BodyPartChest,  .with = BodyPartArmR   },
-            { .what = BodyPartHead,   .with = BodyPartArmL   },
-            { .what = BodyPartHead,   .with = BodyPartArmR   },
-            { .what = BodyPartHandL,  .with = BodyPartArmR   },
-            { .what = BodyPartHandR,  .with = BodyPartArmL   },
-            { .what = BodyPartHandL,  .with = BodyPartHandR  },
-            { .what = BodyPartArmL,   .with = BodyPartArmR   },
-            { .what = BodyPartShinL,  .with = BodyPartShinR  },
-            { .what = BodyPartShinL,  .with = BodyPartThighR },
-            { .what = BodyPartShinR,  .with = BodyPartThighL },
-            { .what = BodyPartThighL, .with = BodyPartHandL  },
-            { .what = BodyPartThighL, .with = BodyPartHandR  },
-            { .what = BodyPartThighR, .with = BodyPartHandL  },
-            { .what = BodyPartThighR, .with = BodyPartHandR  },
-            { .what = BodyPartThighL, .with = BodyPartThighR }
+            enabled_collisions[] {
+            { .what = BodyPartHead,  .with = BodyPartShinL  },
+            { .what = BodyPartHead,  .with = BodyPartShinR  },
+            { .what = BodyPartHead,  .with = BodyPartThighL },
+            { .what = BodyPartHead,  .with = BodyPartThighR },
+            { .what = BodyPartChest, .with = BodyPartShinL  },
+            { .what = BodyPartChest, .with = BodyPartShinR  }
     };
 
     static inline bool should_collide(BodyPart a_type, BodyPart b_type) {
         auto check_comb = [a_type, b_type](BodyPart what, BodyPart with) {
-            return !((a_type == what && b_type == with) ||
+            return  ((a_type == what && b_type == with) ||
                      (a_type == with && b_type == what));
         };
 
         bool result = true;
-        for (auto& p : disabled_collisions)
+        for (auto& p : enabled_collisions)
             result = result && check_comb(p.what, p.with);
 
         return result;
@@ -241,6 +228,7 @@ public:
                 pos.y += parts_heights[BodyPartThighR] * height;
                 pos.y += parts_heights[BodyPartChest]  * height;
                 pos.y -= parts_heights[BodyPartArmL]   * height / 2.f;
+                pos.y -= parts_widths[BodyPartArmL]    * height / 4.f;
                 break;
 
             case BodyPartArmR:
@@ -248,6 +236,7 @@ public:
                 pos.y += parts_heights[BodyPartThighR] * height;
                 pos.y += parts_heights[BodyPartChest]  * height;
                 pos.y -= parts_heights[BodyPartArmR]   * height / 2.f;
+                pos.y -= parts_widths[BodyPartArmR]    * height / 4.f;
                 break;
 
             case BodyPartHandL:
@@ -281,6 +270,11 @@ public:
     }
 
 public:
+    template <typename T>
+    using JointTraverseF = std::function<T(const T& val, class b2Joint*)>;
+
+    PhysicHumanBody(class b2World& world, const b2Vec2& pos, float height = 1.8f, float mass = 80.f);
+
     void makeMirror();
 
     void enableMotor (BodyJoint joint, float speed, float torque);
@@ -289,10 +283,29 @@ public:
     void freeze  (BodyJoint joint);
     void unfreeze(BodyJoint joint);
 
+    void apply_impulse_to_center(BodyPart part, const scl::Vector2f& impulse, bool wake);
+    void apply_impulse(BodyPart part, const scl::Vector2f& impulse, const scl::Vector2f& pos, bool wake);
+
     void enable_ground_cast(bool shin_left, bool shin_right, bool chest) {
         _ground_raycast.enable_shin_l = shin_left;
         _ground_raycast.enable_shin_r = shin_right;
         _ground_raycast.enable_chest  = chest;
+    }
+
+    template <typename T, typename... ArgsT>
+    auto joint_processor_new(const std::string& name, BodyJoint joint, ArgsT&&... args) {
+        return _jpm.create<T>(name, _b2_joints[joint], args...);
+    }
+
+    void remove_joint_processor(const std::string& name) {
+        _jpm.erase(name);
+    }
+
+    template <typename T, size_t _Sz>
+    T joint_traverse(const std::array<BodyJoint, _Sz>& joints, const JointTraverseF<T>& callback, T initial) {
+        for (auto j : joints)
+            initial = callback(initial, _b2_joints[j]);
+        return initial;
     }
 
     // Getters
@@ -315,6 +328,8 @@ public:
     float joint_speed(BodyJoint joint) const;
     float joint_reaction_torque(BodyJoint joint, float dt) const;
 
+    scl::Vector2f joint_position(BodyJoint joint) const;
+
     bool ground_raycast_chest_confirm     () const { return _ground_raycast.chest_confirm && _ground_raycast.enable_chest; }
     bool ground_raycast_shin_left_confirm () const { return _ground_raycast.shin_l_confirm && _ground_raycast.enable_shin_l; }
     bool ground_raycast_shin_right_confirm() const { return _ground_raycast.shin_r_confirm && _ground_raycast.enable_shin_r; }
@@ -326,8 +341,28 @@ public:
     GroundRaycastInfoOpt ground_raycast_shin_left_info() const;
     GroundRaycastInfoOpt ground_raycast_shin_right_info() const;
 
+    auto joint_processor_get(const std::string& name) const {
+        return _jpm.get(name);
+    }
+
+    template <typename T>
+    auto joint_processor_cast_get(const std::string& name) const {
+        return _jpm.cast_get<T>(name);
+    }
+
+    scl::Vector<scl::String> joint_processors_list() const {
+        scl::Vector<scl::String> res;
+        for (auto& p : _jpm.data())
+            res.emplace_back(p.first);
+
+        return res;
+    }
+
+    bool is_joint_processor_exists(const std::string& name) const {
+        return _jpm.data().find(name) != _jpm.data().end();
+    }
+
 protected:
-    PhysicHumanBody(class b2World& world, const b2Vec2& pos, float height = 1.8f, float mass = 80.f);
     void destroy() override;
 
 private:
@@ -372,4 +407,6 @@ private:
     class b2Body* _b2_parts [BodyPart_COUNT] = {nullptr};
     class b2RevoluteJoint* _b2_joints[BodyJoint_COUNT] = {nullptr};
     bool _freezed_joints[BodyJoint_COUNT] = {false};
+
+    JointProcessorManager _jpm;
 };

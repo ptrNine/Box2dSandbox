@@ -4,6 +4,8 @@
 #include <random>
 #include "PhysicSimulation.hpp"
 
+#include "../core/math.hpp"
+
 
 // Todo: move
 void SimpleBody::destroy() {
@@ -27,9 +29,9 @@ PhysicHumanBody::PhysicHumanBody(b2World& world, const b2Vec2& pos, float height
     _raycast_shin_r.part = BodyPartShinR;
     _raycast_chest .part = BodyPartChest;
 
-
     // Update function
-    _update_func = [this]() {
+    _update_functions.emplace_back("Main_update", [this](PhysicBodyBase&, double delta_time) {
+        // Update raycasts
         auto find_end = [](b2Vec2 start, float angle, float height) {
             auto sn = sin(angle);
             auto cs = cos(angle);
@@ -66,7 +68,19 @@ PhysicHumanBody::PhysicHumanBody(b2World& world, const b2Vec2& pos, float height
             _ground_raycast.chest_confirm = false;
             _world->RayCast(&_raycast_chest, start, end);
         }
-    };
+
+        // Update joint processors
+        std::vector<decltype(_jpm.data().begin())> to_delete;
+        for (auto iter = _jpm.data().begin(); iter != _jpm.data().end(); ++iter)
+            if (iter->second->should_be_deleted())
+                to_delete.push_back(iter);
+
+        for (auto iter : to_delete)
+            _jpm.data().erase(iter);
+
+        for (auto& p : _jpm.data())
+            p.second->update(*this, delta_time);
+    });
 }
 
 void PhysicHumanBody::destroy() {
@@ -236,6 +250,7 @@ void PhysicHumanBody::makeMirror() {
 
         joint->SetLimits(-u, -l);
     }
+    _left_orientation = !_left_orientation;
 }
 
 void PhysicHumanBody::enableMotor(BodyJoint joint_type, float speed, float torque) {
@@ -265,6 +280,14 @@ void PhysicHumanBody::unfreeze(BodyJoint joint_type) {
 
 }
 
+void PhysicHumanBody::apply_impulse_to_center(BodyPart part, const scl::Vector2f& impulse, bool wake) {
+    _b2_parts[part]->ApplyLinearImpulseToCenter(b2Vec2(impulse.x(), impulse.y()), wake);
+}
+
+void PhysicHumanBody::apply_impulse(BodyPart part, const scl::Vector2f& impulse, const scl::Vector2f& pos, bool wake) {
+    _b2_parts[part]->ApplyLinearImpulse(b2Vec2(impulse.x(), impulse.y()), b2Vec2(pos.x(), pos.y()), wake);
+}
+
 scl::Vector2f PhysicHumanBody::velocity(BodyPart part) const {
     auto vel = _b2_parts[part]->GetLinearVelocity();
     return {vel.x, vel.y};
@@ -283,7 +306,7 @@ float PhysicHumanBody::angular_speed() const {
 }
 
 float PhysicHumanBody::part_angle(BodyPart part) const {
-    return _b2_parts[part]->GetAngle();
+    return math::angle::constraint(_b2_parts[part]->GetAngle());
 }
 
 float PhysicHumanBody::part_angle() const {
@@ -291,7 +314,7 @@ float PhysicHumanBody::part_angle() const {
 }
 
 float PhysicHumanBody::joint_angle(BodyJoint joint) const {
-    return _b2_joints[joint]->GetJointAngle();
+    return math::angle::constraint(_b2_joints[joint]->GetJointAngle());
 }
 
 float PhysicHumanBody::joint_motor_speed(BodyJoint joint) const {
@@ -358,5 +381,10 @@ scl::Vector2f PhysicHumanBody::center_of_mass() const {
 
 scl::Vector2f PhysicHumanBody::part_position(BodyPart part) const {
     auto pos = _b2_parts[part]->GetPosition();
+    return {pos.x, pos.y};
+}
+
+scl::Vector2f PhysicHumanBody::joint_position(BodyJoint joint) const {
+    auto pos = _b2_joints[joint]->GetAnchorA();
     return {pos.x, pos.y};
 }
