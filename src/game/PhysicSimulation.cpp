@@ -6,6 +6,7 @@
 #include <SFML/Graphics/Texture.hpp>
 
 #include "PhysicHumanBody.hpp"
+#include "../core/math.hpp"
 
 
 #define MASS_FACT 0.01f
@@ -100,20 +101,34 @@ auto PhysicSimulation::createTestSimulation() -> PhysicSimulation::UniquePtr {
 
 
 void PhysicSimulation::update() {
-    if (_on_pause) {
-        _last_update_time = timer().timestamp();
-        return;
-    }
-
     if (!_world)
         return;
 
-    auto current_time = timer().timestamp();
-    auto delta_time = (current_time - _last_update_time).sec();
+    if (_on_pause) {
+        _timer.tick().sec();
+        return;
+    }
+    else if (_force_update) {
+        _timer.tick().sec();
+        step(_step_time);
+    }
+    else {
+        auto tick = _timer.tick().sec() / _slowdown_factor;
 
-    if (_force_update || delta_time > _step_time) {
-        step(delta_time);
-        _last_update_time = current_time;
+        if (_adaptive_timestep && tick > _step_time) {
+            step(tick);
+            _timestep_accumulator = 0.0;
+        }
+        else if (_timestep_accumulator > _step_time) {
+            _timestep_accumulator -= _step_time * int64_t(_timestep_accumulator / _step_time);
+            step(_step_time);
+        }
+        else {
+            if (_debug_draw)
+                interpolateDebugDraw(tick);
+        }
+
+        _timestep_accumulator += tick;
     }
 }
 
@@ -121,20 +136,17 @@ void PhysicSimulation::step(double delta_time) {
     if (!_world)
         return;
 
-    auto delta = _adaptive_timestep && delta_time > _step_time ? delta_time : _step_time;
+    if (delta_time > MIN_STEP)
+        delta_time = MIN_STEP; // Prevent from box2d low-timestep glitches
 
-    if (delta > MIN_STEP)
-        delta = _step_time;
-
-    delta /= _slowdown_factor;
-
-    for (auto& body : _bodies) {
-        if (body->_update_func)
-            body->_update_func();
+    for (auto& body : _bodies.data()) {
+        body->_update_functions.foreach([body, delta_time](const std::function<void(PhysicBodyBase&, double)>& f) {
+            f(*(body.get()), delta_time);
+        });
     }
 
-    _world->Step(delta, _velocity_iters, _position_iters);
-    _simulation_time += delta;
+    _world->Step(float(delta_time), _velocity_iters, _position_iters);
+    _simulation_time += delta_time;
 
     for (auto& pair : _post_callbacks)
         pair.second(*this);
@@ -333,25 +345,41 @@ void PhysicSimulation::updateDebugDraw() {
     }
 }
 
+void PhysicSimulation::interpolateDebugDraw(double timestep) {
+    if (!_debug_draw)
+        return;
+
+    for (auto pair : _draw_map) {
+        b2Fixture*    b2_fixture  = pair.first;
+        sf::Drawable* sf_drawable = pair.second;
+
+        b2Vec2 linear_move = b2_fixture->GetBody()->GetLinearVelocity();
+        linear_move *= timestep;
+
+        float angular_move = math::angle::degree(-b2_fixture->GetBody()->GetAngularVelocity() * float(timestep));
+
+        auto sf_shape = reinterpret_cast<sf::Shape*>(sf_drawable);
+
+        sf_shape->move({linear_move.x, -linear_move.y});
+        sf_shape->rotate(angular_move);
+    }
+}
+
 auto PhysicSimulation::spawnBox(float x, float y, float mass, scl::Vector2f velocity) -> PhysicSimpleBodyWP {
     auto ptr = createBox(*_world, b2Vec2(x, y), mass * MASS_FACT, b2Vec2(0.1f, 0.1f), b2Vec2{velocity.x(), velocity.y()});
     createDebugDrawObjects();
     updateDebugDraw();
 
-    auto body = std::make_shared<SimpleBody>(_world.get(), ptr);
-    _bodies.emplace(body);
-
-    return std::weak_ptr<SimpleBody>(body);
+    return _bodies.create<SimpleBody>(_world.get(), ptr);
 }
 
 auto PhysicSimulation::createHumanBody(const scl::Vector2f& position, float height, float mass) -> PhysicHumanBodyWP {
-    auto res = std::shared_ptr<PhysicHumanBody>(new PhysicHumanBody(*_world, b2Vec2{position.x(), position.y()}, height, mass));
-    _bodies.emplace(res);
+    auto res = _bodies.create<PhysicHumanBody>(*_world, b2Vec2{position.x(), position.y()}, height, mass);
 
     createDebugDrawObjects();
     updateDebugDraw();
 
-    return std::weak_ptr(res);
+    return res;
 }
 
 void PhysicSimulation::deleteBody(std::weak_ptr<PhysicBodyBase> body) {

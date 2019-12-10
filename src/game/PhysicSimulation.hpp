@@ -9,6 +9,7 @@
 
 #include "../core/helper_macros.hpp"
 #include "../core/time.hpp"
+#include "../core/DerivedObjectManager.hpp"
 
 namespace sf {
     class Drawable;
@@ -77,23 +78,27 @@ private:
     void createDebugDrawObjects();
     void updateDebugDraw();
     void clearDrawableManager();
+    void interpolateDebugDraw(double timestep);
 
 private:
-    ska::flat_hash_set<std::shared_ptr<class PhysicBodyBase>> _bodies;
+    DerivedObjectManager<class PhysicBodyBase> _bodies;
+
     ska::flat_hash_map<b2Fixture*, sf::Drawable*> _draw_map;
     ska::flat_hash_map<std::string, UpdatePostCallbackT> _post_callbacks;
     bool _debug_draw = false;
     bool _on_pause   = false;
     bool _adaptive_timestep = true;
     bool _force_update = false;
+    bool _interpolation = false;
 
-    float   _step_time       = 1.f/60.f;
     int32_t _velocity_iters  = 8;
     int32_t _position_iters  = 3;
     double  _simulation_time = 0;
     double  _slowdown_factor = 1.0;
 
-    Timestamp _last_update_time = timer().timestamp();
+    double _step_time = 1.f/100.0;
+    double _timestep_accumulator = 0.f;
+    Timer  _timer;
 
 public:
     // Getters / setters
