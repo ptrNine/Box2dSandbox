@@ -71,6 +71,54 @@ namespace math {
         return details::fis_step<T, _steps>(y, x2);
     }
 
+    template <typename T>
+    T lerp(T v0, T v1, T t) {
+        return (1 - t) * v0 + t * v1;
+    }
+
+    template <typename T>
+    T inverse_lerp(T x1, T x2, T value) {
+        return (value - x1) / (x2 - x1);
+    }
+
+    template <typename T>
+    T unit_clamp(T val) {
+        return std::clamp(val, T(0), T(1));
+    }
+
+    template <typename T>
+    bool float_eq(T a, T b, T epsilon) {
+        return std::fabs(a - b) < epsilon;
+    }
+
+    namespace angle {
+        template <typename T>
+        T constraint(T angle) {
+            angle = std::fmod(angle + T(M_PIf64), T(2) * T(M_PIf64));
+            return angle < 0 ? angle + T(M_PIf64) : angle - T(M_PIf64);
+        }
+
+        template <typename T>
+        T add(T alpha, T betha) {
+            return constraint(alpha + betha);
+        }
+
+        template <typename T>
+        T sub(T alpha, T betha) {
+            return constraint(alpha - betha);
+        }
+
+        template <typename T>
+        T radian(T degree) {
+            return degree * T(M_PIf64) / T(180);
+        }
+
+        template <typename T>
+        T degree(T radian) {
+            return radian * T(180) / T(M_PIf64);
+        }
+    }
+
 
     template <uint64_t _num>
     struct is_power_of_two : public details::_is_power_of_two<(_num & 0x1U), (_num >> 1U)> {};
