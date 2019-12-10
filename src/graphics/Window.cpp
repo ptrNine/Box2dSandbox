@@ -46,12 +46,15 @@ Window::~Window() {
 
 
 void Window::run() {
+    auto timer = Timer();
+
     while (_wnd->isOpen()) {
         eventUpdate();
 
         if (!_wnd->isOpen())
             break;
 
+        update(timer.tick().secf());
         render();
     }
 }
