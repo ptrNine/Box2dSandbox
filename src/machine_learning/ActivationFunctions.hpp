@@ -31,7 +31,7 @@ namespace nnw {
             return it.state.input < 0 ? alpha * (std::exp(it.state.input) - 1) : it.state.input;
         }
 
-        // Softmax calc on whole layer, that return identity
+        // Softmax calc on whole layer, so return identity
         inline FloatT softmax(const Neuron& it) {
             return identity(it);
         }
@@ -187,6 +187,8 @@ namespace nnw {
                     return Identity();
                 case ActivationTypes::Logit:
                     return Logit();
+                case ActivationTypes::Tanh:
+                    return Tanh();
                 case ActivationTypes::RELU:
                     return RELU();
                 case ActivationTypes::LeakyRELU:
