@@ -51,6 +51,9 @@ set(${PROJECT_NAME}_sources
         src/game/PhysicSimulation.cpp
         src/game/PhysicHumanBody.cpp
         src/game/KeyCombo.cpp
+        src/game/RepeaterJointProcessor.cpp
+        src/game/HolderJointProcessor.cpp
+        src/game/MotionInterfaces.cpp
         src/utils/ReaderWriter.cpp
         src/core/time.cpp
         src/ui_callbacks.cpp
