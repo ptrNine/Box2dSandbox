@@ -20,6 +20,7 @@ void Engine::onCreate() {
 
 void Engine::onUpdate() {
     bool anyone_window_visible = true;
+    auto timer = Timer();
 
     while (anyone_window_visible) {
         engine_state().updateDeltaTime();
@@ -43,6 +44,10 @@ void Engine::onUpdate() {
             if (physic_simulation) {
                 physic_simulation->update();
             }
+
+            for (auto& wnd : wnds)
+                if (wnd.first->is_visible())
+                    wnd.first->update(timer.tick().secf());
 
             // Renderer
             for (auto& wnd : wnds)
