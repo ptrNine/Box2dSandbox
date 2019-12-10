@@ -98,6 +98,18 @@ public:
         return diff;
     }
 
+    template <typename T>
+    bool is_greater_tick(T sec) {
+        auto tm = timer().timestamp();
+
+        if ((tm - _last).sec() > sec) {
+            _last = tm;
+            return true;
+        }
+
+        return false;
+    }
+
 private:
     Timestamp _last;
 };
