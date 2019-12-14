@@ -25,3 +25,6 @@
 [submodule "remote/nuklear"]
 	path = remote/nuklear
 	url = https://github.com/vurtun/nuklear
+[submodule "remote/flat_hash_map"]
+	path = remote/flat_hash_map
+	url = https://github.com/skarupke/flat_hash_map
