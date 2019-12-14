@@ -22,3 +22,6 @@
 [submodule "remote/SFML"]
 	path = remote/SFML
 	url = https://github.com/SFML/SFML
+[submodule "remote/nuklear"]
+	path = remote/nuklear
+	url = https://github.com/vurtun/nuklear
