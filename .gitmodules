@@ -31,3 +31,6 @@
 [submodule "remote/libcuckoo"]
 	path = remote/libcuckoo
 	url = https://github.com/efficient/libcuckoo
+[submodule "remote/Box2D"]
+	path = remote/Box2D
+	url = https://github.com/erincatto/Box2D
