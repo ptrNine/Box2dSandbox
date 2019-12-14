@@ -19,3 +19,6 @@
 [submodule "remote/zlib"]
 	path = remote/zlib
 	url = https://github.com/madler/zlib
+[submodule "remote/SFML"]
+	path = remote/SFML
+	url = https://github.com/SFML/SFML
