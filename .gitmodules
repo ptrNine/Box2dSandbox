@@ -28,3 +28,6 @@
 [submodule "remote/flat_hash_map"]
 	path = remote/flat_hash_map
 	url = https://github.com/skarupke/flat_hash_map
+[submodule "remote/libcuckoo"]
+	path = remote/libcuckoo
+	url = https://github.com/efficient/libcuckoo
