@@ -94,11 +94,11 @@ namespace nnw {
                     it_neuron.id = neuron.id;
                     it_neuron.activation_func = neuron.activation_func;
 
-                    it_neuron.connections.input.init(_storage, neuron.connections.input.size());
+                    it_neuron.connections.input.init(_storage, neuron.connections.input.size(), false);
                     for (auto& input : it_neuron.connections.input)
                         input.neuron = magic_neuron(input.neuron);
 
-                    it_neuron.connections.output.init(_storage, neuron.connections.output.size());
+                    it_neuron.connections.output.init(_storage, neuron.connections.output.size(), false);
                     for (auto& output : it_neuron.connections.output) {
                         output.weight = magic_float(output.weight);
                         output.neuron = magic_neuron(output.neuron);
@@ -156,24 +156,24 @@ namespace nnw {
             _storage.init(storage_size);
 
             // Init
-            _layers.init(_storage, layers.size());
+            _layers.init(_storage, layers.size(), false);
 
             for (size_t i = 0; i < _layers.size(); ++i) {
-                _layers[i].init(_storage, layers[i].size());
+                _layers.at(i).init(_storage, layers[i].size(), false);
 
                 for (size_t j = 0; j < _layers[i].size(); ++j) {
-                    auto& neuron       = _layers[i][j];
+                    auto& neuron       = _layers.at(i).at(j);
                     auto& neuron_model = neurons[layers[i][j]];
 
                     if (!neuron_model.input_idxs().empty())
-                        neuron.connections.input.init(_storage, neuron_model.input_idxs().size());
+                        neuron.connections.input.init(_storage, neuron_model.input_idxs().size(), false);
 
                     if (!neuron_model.output_idxs().empty())
-                        neuron.connections.output.init(_storage, neuron_model.output_idxs().size());
+                        neuron.connections.output.init(_storage, neuron_model.output_idxs().size(), false);
                 }
             }
 
-            _neurons.init(_storage, neurons.size());
+            _neurons.init(_storage, neurons.size(), false);
 
             _weights.init(_storage, weights_count);
 
@@ -183,11 +183,11 @@ namespace nnw {
 
             // Init neurons pointers
             for (size_t i = 0; i < _layers.size(); ++i) {
-                for (size_t j = 0; j < _layers[i].size(); ++j) {
-                    auto& neuron           = _layers[i][j];
+                for (size_t j = 0; j < _layers.at(i).size(); ++j) {
+                    auto& neuron           = _layers.at(i).at(j);
                     auto  neuron_model_idx = layers[i][j];
 
-                    _neurons[neuron_model_idx] = &neuron;
+                    _neurons.at(neuron_model_idx) = &neuron;
                 }
             }
 
@@ -196,8 +196,8 @@ namespace nnw {
 
             // Init neurons
             for (size_t i = 0; i < _layers.size(); ++i) {
-                for (size_t j = 0; j < _layers[i].size(); ++j) {
-                    auto& neuron       = _layers[i][j];
+                for (size_t j = 0; j < _layers.at(i).size(); ++j) {
+                    auto& neuron       = _layers.at(i).at(j);
                     auto& neuron_model = neurons[layers[i][j]];
 
                     neuron.id = neuron_model.id();
@@ -206,19 +206,19 @@ namespace nnw {
 
                     for (size_t k = 0; k < neuron.connections.input.size(); ++k) {
                         auto& synapse_model     = synapses[neuron_model.input_idxs()[k]];
-                        auto& input_connection  = neuron.connections.input[k];
+                        auto& input_connection  = neuron.connections.input.at(k);
 
                         input_connection.weight = synapse_model.weight;
-                        input_connection.neuron = _neurons[synapse_model.back_idx()];
+                        input_connection.neuron = _neurons.at(synapse_model.back_idx());
 
                         input_connections.emplace(std::pair{input_connection.neuron, &neuron}, &input_connection.weight);
                     }
 
                     for (size_t k = 0; k < neuron.connections.output.size(); ++k) {
                         auto& synapse_model     = synapses[neuron_model.output_idxs()[k]];
-                        auto& output_connection = neuron.connections.output[k];
+                        auto& output_connection = neuron.connections.output.at(k);
 
-                        output_connection.neuron = _neurons[synapse_model.front_idx()];
+                        output_connection.neuron = _neurons.at(synapse_model.front_idx());
                         output_connection.grad_sum = 0;
                         output_connection.last_delta_weight = 0;
                     }
@@ -226,10 +226,10 @@ namespace nnw {
             }
 
             for (size_t i = 0; i < _neurons.size(); ++i) {
-                auto& outputs = _neurons[i]->connections.output;
+                auto& outputs = _neurons.at(i)->connections.output;
 
                 for (auto& out_connection : outputs)
-                    out_connection.weight = input_connections[{_neurons[i], out_connection.neuron}];
+                    out_connection.weight = input_connections[{_neurons.at(i), out_connection.neuron}];
             }
 
             // Weights and biases
