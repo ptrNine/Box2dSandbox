@@ -42,3 +42,46 @@ macro(git_submodule_build _project_name)
     endif()
 
 endmacro()
+
+
+macro(git_submodule_copy_files _project_name)
+    set(options NO_NAME_INCLUDE)
+    set(oneValueArgs EXPLICIT_INCLUDE_NAME EXPLICIT_INCLUDE_DIR)
+    set(multiValueArgs INCLUDES LIBRARIES)
+    cmake_parse_arguments(${_project_name} "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if (${_project_name}_NO_NAME_INCLUDE AND DEFINED ${_project_name}_EXPLICIT_INCLUDE_NAME)
+        message(FATAL_ERROR "Can't use NO_NAME_INCLUDE with EXPLICIT_INCLUDE_NAME")
+    endif()
+
+    if (${_project_name}_NO_NAME_INCLUDE AND DEFINED ${_project_name}_EXPLICIT_INCLUDE_DIR)
+        message(FATAL_ERROR "Can't use NO_NAME_INCLUDE with EXPLICIT_INCLUDE_DIR")
+    endif()
+
+    if (DEFINED ${_project_name}_EXPLICIT_INCLUDE_DIR AND ${_project_name}_EXPLICIT_INCLUDE_NAME)
+        message(FATAL_ERROR "Can't use EXPLICIT_INCLUDE_DIR with EXPLICIT_INCLUDE_NAME")
+    endif()
+
+    foreach(_file ${${_project_name}_INCLUDES})
+        get_filename_component(_path ${_file} DIRECTORY)
+        set(_src_path "${CMAKE_SOURCE_DIR}/remote/${_project_name}/${_file}")
+        set(_dst_path "${CMAKE_BINARY_DIR}/fakeroot/include")
+
+        if(${_project_name}_NO_NAME_INCLUDE)
+            file(COPY "${_src_path}" DESTINATION "${_dst_path}/${_path}")
+        else()
+            if (DEFINED ${_project_name}_EXPLICIT_INCLUDE_DIR)
+                file(COPY "${_src_path}" DESTINATION "${_dst_path}/${${_project_name}_EXPLICIT_INCLUDE_DIR}")
+            elseif (DEFINED ${_project_name}_EXPLICIT_INCLUDE_NAME)
+                file(COPY "${_src_path}" DESTINATION "${_dst_path}/${${_project_name}_EXPLICIT_INCLUDE_NAME}/${_path}")
+            else()
+                file(COPY "${_src_path}" DESTINATION "${_dst_path}/${_project_name}/${_path}")
+            endif()
+        endif()
+    endforeach()
+
+    foreach(_file ${${_project_name}_LIBRARIES})
+        get_filename_component(_path ${_file} DIRECTORY)
+        file(COPY "${CMAKE_SOURCE_DIR}/remote/${_project_name}/${_file}" DESTINATION "${CMAKE_BINARY_DIR}/fakeroot/lib/${_path}")
+    endforeach()
+endmacro()
