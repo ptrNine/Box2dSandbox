@@ -70,9 +70,18 @@ void HolderJointProcessor::Pressets::human_hand_normal(HolderJointProcessor& hjp
 
 void HolderJointProcessor::Pressets::human_hand_fast_tense(HolderJointProcessor& hjp)  {
     hjp.max_speed (15.f);
-    hjp.max_torque(4.2f);
-    hjp.acceleration(140.f);
+    hjp.max_torque(4.f);
+    hjp.acceleration(200.f);
 
     hjp.deadzone_epsilon(0.15f);
-    hjp.deadzone_acceleration_factor(10.f);
+    hjp.deadzone_acceleration_factor(8.5f);
+}
+
+void HolderJointProcessor::Pressets::human_leg_fast_tense(HolderJointProcessor& hjp)  {
+    hjp.max_speed (8.f);
+    hjp.max_torque(6.f);
+    hjp.acceleration(150.f);
+
+    hjp.deadzone_epsilon(0.01f);
+    hjp.deadzone_acceleration_factor(1.f);
 }

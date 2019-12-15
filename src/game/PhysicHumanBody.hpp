@@ -34,6 +34,19 @@ public:
         BodyPart_COUNT
     };
 
+    static constexpr std::string_view part_names[BodyPart_COUNT] {
+            "Head",
+            "Chest",
+            "HandL",
+            "ArmL",
+            "HandR",
+            "ArmR",
+            "ThighL",
+            "ShinL",
+            "ThighR",
+            "ShinR"
+    };
+
     static constexpr ShapeType parts_shape_types[BodyPart_COUNT] {
             ShapeTypeCircle, // Head
             ShapeTypeBox,    // Chest
@@ -119,6 +132,18 @@ public:
         BodyJoint_ThighR_ShinR,
         BodyJoint_Head_Chest,
         BodyJoint_COUNT
+    };
+
+    static constexpr std::string_view joint_names[BodyJoint_COUNT] {
+        "Chest_ArmL",
+        "Chest_ArmR",
+        "ArmL_HandL",
+        "ArmR_HandR",
+        "Chest_ThighL",
+        "Chest_ThighR",
+        "ThighL_ShinL",
+        "ThighR_ShinR",
+        "Head_Chest"
     };
 
     static constexpr struct { BodyPart what; BodyPart with; }

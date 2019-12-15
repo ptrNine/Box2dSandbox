@@ -9,6 +9,7 @@ public:
         static void human_hand_weak_relaxed(HolderJointProcessor& hjp);
         static void human_hand_normal      (HolderJointProcessor& hjp);
         static void human_hand_fast_tense  (HolderJointProcessor& hjp);
+        static void human_leg_fast_tense   (HolderJointProcessor& hjp);
     };
 
 public:
