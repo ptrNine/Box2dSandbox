@@ -13,25 +13,26 @@ namespace nnw {
     public:
         FixedVector() : FixedView<T>(nullptr, 0) {}
 
-        explicit FixedVector(FixedStorage& allocator, size_t size):
-                FixedView<T>(allocator.alloc<T>(size), size) {}
+        explicit FixedVector(FixedStorage& allocator, size_t size, bool enable_assignments = true):
+                FixedView<T>(allocator.alloc<T>(size), size), _current(enable_assignments ? 0 : size) {}
 
         FixedVector(FixedVector&& vector) noexcept : FixedView<T>(vector._data, vector._size) {
             vector._size = 0;
             vector._data = nullptr;
+            _current = vector._current;
         }
 
         FixedVector(const FixedVector&) = delete;
         FixedVector& operator=(const FixedVector&) = delete;
 
-        void init(FixedStorage& allocator, size_t size) {
+        void init(FixedStorage& allocator, size_t size, bool enable_assignments = true) {
             if (this->_data != nullptr)
                 throw Exception("Attempt to reinit FixedVector");
 
             this->_data = allocator.alloc<T>(size);
             this->_size = size;
 
-            _current = 0;
+            _current = enable_assignments ? 0 : size;
         }
 
         T& assign_back(const T& val) {
@@ -68,6 +69,20 @@ namespace nnw {
 
         const T& back() const {
             return *(this->_data + _current - 1);
+        }
+
+        const T& at(size_t idx) const {
+            if (idx >= this->_size)
+                throw Exception("FixedVector::at(): out of bounds");
+
+            return this->operator[](idx);
+        }
+
+        T& at(size_t idx) {
+            if (idx >= this->_size)
+                throw Exception("FixedVector::at(): out of bounds");
+
+            return this->operator[](idx);
         }
 
     private:
