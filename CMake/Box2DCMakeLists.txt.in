@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.10)
+project(Box2D)
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic")
+
+if(WIN32)
+    add_definitions(-D _CRT_SECURE_NO_WARNINGS)
+endif()
+
+string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE)
+
+if (DEFINED CMAKE_BUILD_TYPE AND NOT CMAKE_BUILD_TYPE MATCHES "^(|DEBUG|RELEASE|RELWITHDEBINFO|MINSIZEREL)$")
+    message(FATAL_ERROR "Invalid CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+endif()
+
+if (NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE MATCHES "^(|DEBUG|RELWITHDEBINFO)$")
+    message("Debug info on")
+    add_definitions(-D DEBUG)
+elseif()
+    add_definitions(-D NDEBUG)
+endif()
+
+include_directories(../)
+
+file(GLOB_RECURSE Box2D_sources *.cpp)
+file(GLOB_RECURSE Box2D_includes RELATIVE ${PROJECT_SOURCE_DIR} *.h)
+
+add_library(Box2D ${Box2D_sources})
+
+install(TARGETS Box2D DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/)
+foreach(_file ${Box2D_includes})
+    get_filename_component(_path ${_file} DIRECTORY)
+    install(FILES ${_file} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/Box2D/${_path})
+endforeach()
