@@ -62,6 +62,63 @@ namespace nnw {
                 _has_softmax_output    (ffnn._has_softmax_output)
         {}
 
+
+        FeedForwardNeuralNetwork(const FeedForwardNeuralNetwork& ffnn):
+                _storage               (ffnn._storage),
+                _input_layer_size      (ffnn._input_layer_size),
+                _learning_rate         (ffnn._learning_rate),
+                _momentum              (ffnn._momentum),
+                _current_batch         (ffnn._current_batch),
+                _batch_size            (ffnn._batch_size),
+                _new_batch_size        (ffnn._new_batch_size),
+                _backpropagate_counter (ffnn._backpropagate_counter),
+                _has_softmax_output    (ffnn._has_softmax_output)
+        {
+            // Displacement for applying to all pointers
+            ptrdiff_t displacement = _storage.unsafe_data() - ffnn._storage.unsafe_data();
+            auto magic_float = [displacement](float* ptr) {
+                return reinterpret_cast<float*>(reinterpret_cast<uint8_t*>(ptr) + displacement);
+            };
+            auto magic_neuron = [displacement](Neuron* ptr) {
+                return reinterpret_cast<Neuron*>(reinterpret_cast<uint8_t*>(ptr) + displacement);
+            };
+
+            _layers.init(_storage, ffnn._layers.size());
+            for (auto& layer : ffnn._layers) {
+                auto to_insert = FixedVector<Neuron>(_storage, layer.size());
+
+                for (auto& neuron : layer) {
+                    auto it_neuron = Neuron();
+
+                    it_neuron.state = neuron.state;
+                    it_neuron.id = neuron.id;
+                    it_neuron.activation_func = neuron.activation_func;
+
+                    it_neuron.connections.input.init(_storage, neuron.connections.input.size());
+                    for (auto& input : it_neuron.connections.input)
+                        input.neuron = magic_neuron(input.neuron);
+
+                    it_neuron.connections.output.init(_storage, neuron.connections.output.size());
+                    for (auto& output : it_neuron.connections.output) {
+                        output.weight = magic_float(output.weight);
+                        output.neuron = magic_neuron(output.neuron);
+                    }
+
+                    to_insert.assign_back(std::move(it_neuron));
+                }
+
+                _layers.assign_back(std::move(to_insert));
+            }
+
+            _neurons.init(_storage, ffnn._neurons.size());
+            for (auto neuron : ffnn._neurons)
+                _neurons.assign_back(magic_neuron(neuron));
+
+            _weights.init(_storage, ffnn._weights.size());
+            for (auto weight : ffnn._weights)
+                _weights.assign_back(magic_float(weight));
+        }
+
         FeedForwardNeuralNetwork(
                 const NeuronStorage&  neurons,
                 const SynapseStorage& synapses,
