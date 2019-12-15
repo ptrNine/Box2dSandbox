@@ -13,6 +13,13 @@
 #include "src/game/KeyCombo.hpp"
 #include "src/game/PhysicHumanBody.hpp"
 
+#include "src/core/math.hpp"
+#include "src/machine_learning/Neuron.hpp"
+#include <Box2D/Dynamics/Joints/b2RevoluteJoint.h>
+
+#include "src/game/RepeaterJointProcessor.hpp"
+#include "src/game/HolderJointProcessor.hpp"
+#include "src/game/MotionInterfaces.hpp"
 
 void Engine::mainCreate() {
     auto wnd = Window::createShared();
@@ -41,6 +48,21 @@ void Engine::mainCreate() {
     static scl::Vector2f start_pos_wnd;
     static sf::ConvexShape* shot_shape;
     static std::weak_ptr<PhysicHumanBody> last_body;
+
+    static auto physics_callback = [wnd, camera](PhysicSimulation& it) {
+        if (auto human = last_body.lock()) {
+            if (auto arm_l = human->joint_processor_cast_get<HolderJointProcessor>("arm_l").lock()) {
+                auto cursor_pos = wnd->getMouseCoords(*camera);
+                auto joint_pos  = human->joint_position(PhysicHumanBody::BodyJoint_Chest_ArmL);
+                auto dir = (cursor_pos - joint_pos).normalize();
+                auto chest_angle = human->part_angle(PhysicHumanBody::BodyPartChest);
+
+                arm_l->set_hold_angle_if_valid(
+                        math::angle::constraint(
+                                std::atan2(dir.x(), -dir.y()) - chest_angle) - math::angle::radian(17.f));
+            }
+        }
+    };
 
     wnd->addRenderCallback("Hud callback", [fpsText, camera](Window& wnd) {
         scl::String info;
@@ -102,6 +124,7 @@ void Engine::mainCreate() {
                 physic_simulation = PhysicSimulation::createTestSimulation();
                 physic_simulation->debug_draw(true);
                 physic_simulation->attachDrawableManager(drawable_manager);
+                physic_simulation->addPostUpdateCallback("clbk", physics_callback);
             }
             else if (evt.key.code == sf::Keyboard::H)
                 on_height_edit = true;
@@ -113,14 +136,6 @@ void Engine::mainCreate() {
                 if (auto body = last_body.lock()) {
                     for(size_t i = 0; i < PhysicHumanBody::BodyJoint_COUNT; ++i)
                         body->freeze(PhysicHumanBody::BodyJoint(i));
-                    //body->enableMotor(PhysicHumanBody::BodyJoint_ThighL_ShinL, 10, 10);
-                    //body->enableMotor(PhysicHumanBody::BodyJoint_Chest_ThighL, 2, 10);
-                    //body->enableMotor(PhysicHumanBody::BodyJoint_Chest_ThighR, -2, 10);
-                    //body->enableMotor(PhysicHumanBody::BodyJoint_Chest_ArmL, -10, 10);
-                    //body->enableMotor(PhysicHumanBody::BodyJoint_ArmL_HandL, 10, 10);
-                    //body->enableMotor(PhysicHumanBody::BodyJoint_Chest_ArmR, -10, 10);
-                    //body->enableMotor(PhysicHumanBody::BodyJoint_ArmR_HandR, 10, 10);
-                    //body->freeze(PhysicHumanBody::BodyJoint_Head_Chest);
                 }
             }
         }
@@ -131,14 +146,6 @@ void Engine::mainCreate() {
                 if (auto body = last_body.lock()) {
                     for(size_t i = 0; i < PhysicHumanBody::BodyJoint_COUNT; ++i)
                         body->unfreeze(PhysicHumanBody::BodyJoint(i));
-                    //body->disableMotor(PhysicHumanBody::BodyJoint_ThighL_ShinL);
-                    //body->disableMotor(PhysicHumanBody::BodyJoint_Chest_ThighL);
-                    //body->disableMotor(PhysicHumanBody::BodyJoint_Chest_ThighR);
-                    //body->disableMotor(PhysicHumanBody::BodyJoint_Chest_ArmL);
-                    //body->disableMotor(PhysicHumanBody::BodyJoint_ArmL_HandL);
-                    //body->disableMotor(PhysicHumanBody::BodyJoint_Chest_ArmR);
-                    //body->disableMotor(PhysicHumanBody::BodyJoint_ArmR_HandR);
-                    //body->unfreeze(PhysicHumanBody::BodyJoint_Head_Chest);
                 }
             }
         }
@@ -162,6 +169,60 @@ void Engine::mainCreate() {
             else if (evt.mouseButton.button == sf::Mouse::Right) {
                 auto pos = wnd.getMouseCoords(cam);
                 last_body = physic_simulation->createHumanBody(pos, human_height, 80.f);
+                last_body.lock()->makeMirror();
+
+                MotionInterfaces::HumanRun::apply(*last_body.lock());
+                MotionInterfaces::HumanRun::set_thigh_limits(*last_body.lock(), -0.8f, 1.8f);
+
+//                for (int i = 0; i < PhysicHumanBody::BodyJoint_COUNT; ++i)
+//                    last_body.lock()->freeze(PhysicHumanBody::BodyJoint(i));
+//
+//                auto jp = last_body.lock()->joint_processor_new<HolderJointProcessor>("arm_l", PhysicHumanBody::BodyJoint_Chest_ArmL);
+//                HolderJointProcessor::Pressets::human_hand_fast_tense(*jp.lock());
+//                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_Chest_ArmL);
+//
+//                auto jp2 = last_body.lock()->joint_processor_new<HolderJointProcessor>("hand_l", PhysicHumanBody::BodyJoint_ArmL_HandL, math::angle::radian(24.f));
+//                HolderJointProcessor::Pressets::human_hand_fast_tense(*jp2.lock());
+//                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_ArmL_HandL);
+
+                /*
+                auto jp3 = last_body.lock()->joint_processor_new<RepeaterJointProcessor>("thigh_l", PhysicHumanBody::BodyJoint_Chest_ThighL, -0.1, 0.3);
+                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_Chest_ThighL);
+                jp3.lock()->max_speed(1.f);
+                jp3.lock()->max_torque(10.f);
+                //jp3.lock()->change_dir_release_epsilon(0.4f);
+
+                auto jp4 = last_body.lock()->joint_processor_new<RepeaterJointProcessor>("thigh_r", PhysicHumanBody::BodyJoint_Chest_ThighR, -0.1, 0.3);
+                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_Chest_ThighR);
+                jp4.lock()->max_speed(1.f);
+                jp4.lock()->max_torque(10.f);
+                jp4.lock()->change_sign();
+
+                //jp4.lock()->change_dir_release_epsilon(0.4f);
+                auto jp5 = last_body.lock()->joint_processor_new<RepeaterJointProcessor>("shin_l", PhysicHumanBody::BodyJoint_ThighL_ShinL, -0.9, 0.0);
+                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_ThighL_ShinL);
+                jp5.lock()->max_speed(5.f);
+                jp5.lock()->max_torque(10.f);
+                jp5.lock()->change_sign();
+                //jp3.lock()->change_dir_release_epsilon(0.4f);
+
+                auto jp6 = last_body.lock()->joint_processor_new<RepeaterJointProcessor>("shin_r", PhysicHumanBody::BodyJoint_ThighR_ShinR, -0.9, 0.0);
+                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_ThighR_ShinR);
+                jp6.lock()->max_speed(5.f);
+                jp6.lock()->max_torque(10.f);
+                 */
+
+            }
+            else if (evt.mouseButton.button == sf::Mouse::Middle) {
+                if (auto human = last_body.lock()) {
+                    if (auto jp = human->joint_processor_cast_get<HolderJointProcessor>("hand_l").lock()) {
+                        auto hand_pos  = human->part_position(PhysicHumanBody::BodyPartHandL);
+                        auto joint_pos = human->joint_position(PhysicHumanBody::BodyJoint_ArmL_HandL);
+                        auto dir = (hand_pos - joint_pos).normalize();
+
+                        human->apply_impulse(PhysicHumanBody::BodyPartHandL, dir * -0.34, hand_pos + scl::Vector2f{-dir.y(), dir.x()} * 0.1f, true);
+                    }
+                }
             }
         }
         else if (evt.type == sf::Event::MouseButtonReleased) {
@@ -178,11 +239,18 @@ void Engine::mainCreate() {
     physic_simulation = PhysicSimulation::createTestSimulation();
     physic_simulation->debug_draw(true);
     physic_simulation->attachDrawableManager(drawable_manager);
+    physic_simulation->addPostUpdateCallback("clbk", physics_callback);
+    //physic_simulation->gravity(0, 0);
 
     wnd->addUiCallback("Physics Ui", uiPhysics(drawable_manager));
 }
 
+
 int main(int argc, char* argv[]) {
     auto engine = Engine();
     return engine.run(argc, argv);
+
+    //scl::Array a{1, 2, 3, 4};
+    //a.reduce(std::plus<>{});
+    return 0;
 }
