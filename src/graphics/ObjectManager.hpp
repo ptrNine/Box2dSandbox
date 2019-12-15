@@ -237,7 +237,7 @@ public:
     }
 
 private:
-    cuckoohash_map<ObjectT*, size_t> _storage;
+    libcuckoo::cuckoohash_map<ObjectT*, size_t> _storage;
     std::string _name;
 };
 
@@ -322,6 +322,6 @@ public:
     }
 
 private:
-    cuckoohash_map<ObjectT*, AttribT> _storage;
+    libcuckoo::cuckoohash_map<ObjectT*, AttribT> _storage;
     std::string _name;
 };
