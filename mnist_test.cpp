@@ -63,8 +63,8 @@ int main() {
         return (hits * 100.f) / all;
     };
 
-    auto generate_ideal = [&network](uint8_t real_answer) {
-        auto res = scl::Vector<float>(network.output_layer_size(), 0.f);
+    auto generate_ideal = [&, n = std::ref(network)](uint8_t real_answer) {
+        auto res = scl::Vector<float>(n.get().output_layer_size(), 0.f);
         res[real_answer] = 1.f;
         return std::move(res);
     };
