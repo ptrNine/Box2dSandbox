@@ -6,22 +6,39 @@ set(CMAKE_CXX_STANDARD 17)
 # CMake modules
 include(CMake/git_submodule_build.cmake)
 include(CMake/git_submodule_update.cmake)
+include(CMake/prepare_box2d_build.cmake)
 
 # SFML
-set(CMAKE_PREFIX_PATH "3p/usr/local/")
-set(SFML_DIR "3p/usr/local/lib/cmake/SFML")
-find_package(SFML 2.5 REQUIRED COMPONENTS system window graphics network audio)
-set(SFML_LIBS sfml-system sfml-window sfml-graphics sfml-network sfml-audio)
+#set(CMAKE_PREFIX_PATH "3p/usr/local/")
+#set(SFML_DIR "3p/usr/local/lib/cmake/SFML")
+#find_package(SFML 2.5 REQUIRED COMPONENTS system window graphics network audio)
+#set(SFML_LIBS sfml-system sfml-window sfml-graphics sfml-network sfml-audio)
 
 # Update and build submodules
 git_submodule_update()
+git_submodule_build(SFML)
+
+prepare_box2d_build()
+git_submodule_build(Box2D/Box2D)
+
 git_submodule_build(SimpleConfigManager)
 git_submodule_build(SimpleContainersLibrary INSTALL_SUB_DEPS)
 git_submodule_build(gainput)
 git_submodule_build(cpp-httplib)
 git_submodule_build(zlib)
+git_submodule_copy_files(nuklear NO_NAME_INCLUDE INCLUDES nuklear.h)
+git_submodule_copy_files(flat_hash_map NO_NAME_INCLUDE INCLUDES flat_hash_map.hpp)
+git_submodule_copy_files(libcuckoo NO_NAME_INCLUDE INCLUDES
+        libcuckoo/cuckoohash_map.hh
+        libcuckoo/cuckoohash_util.hh
+        libcuckoo/cuckoohash_config.hh
+        libcuckoo/bucket_container.hh)
 
 set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/fakeroot)
+
+# SFML
+find_package(SFML 2.5 REQUIRED COMPONENTS system window graphics network audio)
+set(SFML_LIBS sfml-system sfml-window sfml-graphics sfml-network sfml-audio)
 
 # SCM
 find_package(SCM REQUIRED)
@@ -36,9 +53,7 @@ find_package(fmt REQUIRED)
 find_package(utf8cpp REQUIRED)
 
 include_directories(${CMAKE_BINARY_DIR}/fakeroot/include)
-
-include_directories(3p/usr/local/include)
-link_directories(3p/usr/local/lib)
+link_directories(${CMAKE_BINARY_DIR}/fakeroot/lib)
 
 set(${PROJECT_NAME}_sources
         src/graphics/nuklear.cpp
@@ -59,7 +74,7 @@ set(${PROJECT_NAME}_sources
         src/ui_callbacks.cpp
         )
 
-set(_libraries ${SFML_LIBS} GL GLEW Box2D -pthread ${SCM_STATIC_LIBRARIES} fmt)
+set(_libraries ${SFML_LIBS} GL GLEW Box2D -pthread ${SCM_STATIC_LIBRARIES} fmt::fmt)
 
 add_executable(platformer main.cpp ${${PROJECT_NAME}_sources})
 add_executable(physic_body_constructor physic_body_constructor.cpp ${${PROJECT_NAME}_sources})
