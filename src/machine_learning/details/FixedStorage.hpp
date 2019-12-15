@@ -22,11 +22,13 @@ namespace nnw {
 
         FixedStorage(const FixedStorage& alloc): _size(alloc._size) {
             _data = new uint8_t[_size]();
+            std::memcpy(_data, alloc._data, _size);
         }
 
         FixedStorage& operator=(const FixedStorage& alloc) {
             _size = alloc._size;
             _data = new uint8_t[_size];
+            std::memcpy(_data, alloc._data, _size);
             return *this;
         }
 
@@ -70,6 +72,10 @@ namespace nnw {
 
         size_t allocated_size() const {
             return _pos;
+        }
+
+        uint8_t* unsafe_data() const {
+            return _data;
         }
 
     private:

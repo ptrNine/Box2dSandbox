@@ -6,7 +6,7 @@
 namespace nnw {
     /**
      * FixedVector
-     * Note: T must be trivial
+     * Note: T must be trivially destructible
      */
     template <typename T>
     class FixedVector : public FixedView<T> {
@@ -21,8 +21,8 @@ namespace nnw {
             vector._data = nullptr;
         }
 
-        FixedVector(FixedVector&) = delete;
-        FixedVector& operator=(FixedVector&) = delete;
+        FixedVector(const FixedVector&) = delete;
+        FixedVector& operator=(const FixedVector&) = delete;
 
         void init(FixedStorage& allocator, size_t size) {
             if (this->_data != nullptr)
@@ -34,16 +34,41 @@ namespace nnw {
             _current = 0;
         }
 
-        T& assign_back(const T &val) {
+        T& assign_back(const T& val) {
             if (_current >= this->_size)
-                throw Exception("FixedVector::push(): out of bounds");
+                throw Exception("FixedVector::assign_back(): out of bounds");
 
-            *(this->_data + _current) = val;
+            new (this->_data + _current) T(val);
             ++_current;
 
             return *(this->_data + _current - 1);
         }
 
+        T& assign_back(T&& val) {
+            if (_current >= this->_size)
+                throw Exception("FixedVector::assign_back(): out of bounds");
+
+            new (this->_data + _current) T(std::forward<T>(val));
+            ++_current;
+
+            return *(this->_data + _current - 1);
+        }
+
+        T& front() {
+            return *(this->_data);
+        }
+
+        T& back() {
+            return *(this->_data + _current - 1);
+        }
+
+        const T& front() const {
+            return *(this->_data);
+        }
+
+        const T& back() const {
+            return *(this->_data + _current - 1);
+        }
 
     private:
         size_t _current = 0;

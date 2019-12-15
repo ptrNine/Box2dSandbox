@@ -13,15 +13,11 @@ namespace nnw {
         const T* begin() const { return _data; }
         const T* end  () const { return _data + _size; }
         const T* get  () const { return _data; }
-        const T& front() const { return *_data; }
-        const T& back () const { return *(_data + _size - 1); }
 
         T& operator[](size_t i) { return _data[i]; }
         T* begin() { return _data; }
         T* end  () { return _data + _size; }
         T* get  () { return _data; }
-        T& front() { return *_data; }
-        T& back () { return *(_data + _size - 1); }
 
         void unsafe_unbound() {
             _data = nullptr;
