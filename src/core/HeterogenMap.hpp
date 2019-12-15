@@ -2,6 +2,10 @@
 #include <flat_hash_map.hpp>
 #include <unordered_map>
 
+#define HCASTER_REF(name, caster) auto& name = caster(#name)
+#define HMAP_GET(type, name, heterogen_map) \
+type name = heterogen_map.cast<type>(#name)
+
 template <typename K, typename H = std::hash<K>, typename E = std::equal_to<K>, typename A = std::allocator<std::pair<K, std::any>>>
 class HeterogenMap;
 
