@@ -18,6 +18,16 @@ namespace nnw {
     };
 
     struct Neuron {
+        Neuron() = default;
+        Neuron(Neuron&& neuron) noexcept:
+                activation_func(std::move(neuron.activation_func)),
+                connections    (std::move(neuron.connections)),
+                state          (neuron.state),
+                id             (neuron.id)
+        {}
+
+        Neuron(const Neuron&) = delete;
+
         using Type = NeuronType;
 
         struct {
