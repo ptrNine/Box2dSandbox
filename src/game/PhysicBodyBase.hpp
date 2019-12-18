@@ -6,13 +6,14 @@
 
 #include "../core/FunctionMap.hpp"
 #include "../core/HeterogenMap.hpp"
+#include "JointProcessor.hpp"
 
 class PhysicBodyBase {
     friend class PhysicSimulation;
 
 public:
-    void add_update(std::string&& name, std::function<void(PhysicBodyBase&, double)>&& callback) {
-        _update_functions.emplace_back(std::move(name), std::move(callback));
+    void add_update(const std::string& name, std::function<void(PhysicBodyBase&, double)>&& callback) {
+        _update_functions.emplace_back(name, std::move(callback));
     }
 
     void remove_update(const std::string& name) {
@@ -51,6 +52,7 @@ protected:
     HeterogenMap<std::string>                  _user_data;
 };
 
+
 class SimpleBody : public PhysicBodyBase {
     friend class PhysicSimulation;
 public:
@@ -63,4 +65,45 @@ public:
 
 protected:
     class b2Body* _body;
+};
+
+
+class BodyWithJoints : public PhysicBodyBase {
+    friend class PhysicSimulation;
+
+public:
+    virtual class b2Joint* get_joint(int joint_index) const = 0;
+
+    template <typename T, typename... ArgsT>
+    auto joint_processor_new(const std::string& name, int joint_index, ArgsT&&... args) {
+        return _jpm.create<T>(name, get_joint(joint_index), args...);
+    }
+
+    void remove_joint_processor(const std::string& name) {
+        _jpm.erase(name);
+    }
+
+    auto joint_processor_get(const std::string& name) const {
+        return _jpm.get(name);
+    }
+
+    template <typename T>
+    auto joint_processor_cast_get(const std::string& name) const {
+        return _jpm.cast_get<T>(name);
+    }
+
+    scl::Vector<scl::String> joint_processors_list() const {
+        scl::Vector<scl::String> res;
+        for (auto& p : _jpm.data())
+            res.emplace_back(p.first);
+
+        return res;
+    }
+
+    bool is_joint_processor_exists(const std::string& name) const {
+        return _jpm.data().find(name) != _jpm.data().end();
+    }
+
+protected:
+    JointProcessorManager _jpm;
 };

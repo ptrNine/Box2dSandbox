@@ -7,7 +7,7 @@
 #include "PhysicBodyBase.hpp"
 #include "JointProcessor.hpp"
 
-class PhysicHumanBody : public PhysicBodyBase {
+class PhysicHumanBody : public BodyWithJoints {
     friend class PhysicSimulation;
     friend class ContactFilter;
 
@@ -34,7 +34,7 @@ public:
         BodyPart_COUNT
     };
 
-    static constexpr std::string_view part_names[BodyPart_COUNT] {
+    static constexpr const char* part_names[BodyPart_COUNT] = {
             "Head",
             "Chest",
             "HandL",
@@ -134,7 +134,7 @@ public:
         BodyJoint_COUNT
     };
 
-    static constexpr std::string_view joint_names[BodyJoint_COUNT] {
+    static constexpr const char* joint_names[BodyJoint_COUNT] = {
         "Chest_ArmL",
         "Chest_ArmR",
         "ArmL_HandL",
@@ -317,15 +317,6 @@ public:
         _ground_raycast.enable_chest  = chest;
     }
 
-    template <typename T, typename... ArgsT>
-    auto joint_processor_new(const std::string& name, BodyJoint joint, ArgsT&&... args) {
-        return _jpm.create<T>(name, _b2_joints[joint], args...);
-    }
-
-    void remove_joint_processor(const std::string& name) {
-        _jpm.erase(name);
-    }
-
     template <typename T, size_t _Sz>
     T joint_traverse(const std::array<BodyJoint, _Sz>& joints, const JointTraverseF<T>& callback, T initial) {
         for (auto j : joints)
@@ -334,6 +325,10 @@ public:
     }
 
     // Getters
+    class b2Joint* get_joint(int joint_index) const override {
+        // Todo: assert if out of bounds
+        return (class b2Joint*)_b2_joints[joint_index];
+    }
 
     scl::Vector2f velocity() const;
     scl::Vector2f velocity(BodyPart part) const;
@@ -365,27 +360,6 @@ public:
     GroundRaycastInfoOpt ground_raycast_chest_info() const;
     GroundRaycastInfoOpt ground_raycast_shin_left_info() const;
     GroundRaycastInfoOpt ground_raycast_shin_right_info() const;
-
-    auto joint_processor_get(const std::string& name) const {
-        return _jpm.get(name);
-    }
-
-    template <typename T>
-    auto joint_processor_cast_get(const std::string& name) const {
-        return _jpm.cast_get<T>(name);
-    }
-
-    scl::Vector<scl::String> joint_processors_list() const {
-        scl::Vector<scl::String> res;
-        for (auto& p : _jpm.data())
-            res.emplace_back(p.first);
-
-        return res;
-    }
-
-    bool is_joint_processor_exists(const std::string& name) const {
-        return _jpm.data().find(name) != _jpm.data().end();
-    }
 
 protected:
     void destroy() override;
@@ -432,6 +406,4 @@ private:
     class b2Body* _b2_parts [BodyPart_COUNT] = {nullptr};
     class b2RevoluteJoint* _b2_joints[BodyJoint_COUNT] = {nullptr};
     bool _freezed_joints[BodyJoint_COUNT] = {false};
-
-    JointProcessorManager _jpm;
 };
