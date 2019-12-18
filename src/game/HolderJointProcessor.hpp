@@ -10,12 +10,14 @@ public:
         static void human_hand_normal      (HolderJointProcessor& hjp);
         static void human_hand_fast_tense  (HolderJointProcessor& hjp);
         static void human_leg_fast_tense   (HolderJointProcessor& hjp);
+        static void human_shin_superweak   (HolderJointProcessor& hjp);
     };
 
 public:
     DECLARE_SELF_FABRICS(HolderJointProcessor);
 
-    HolderJointProcessor(class b2RevoluteJoint* j, float hold_angle = 0.0f):
+    explicit HolderJointProcessor(class b2Joint* j, float hold_angle = 0.0f);
+    explicit HolderJointProcessor(class b2RevoluteJoint* j, float hold_angle = 0.0f):
             _joint(j),
             _hold_angle(hold_angle)
     {}

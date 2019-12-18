@@ -6,6 +6,14 @@
 
 #include <iostream>
 
+HolderJointProcessor::HolderJointProcessor(b2Joint* j, float hold_angle) {
+    if (j->GetType() != e_revoluteJoint) {
+        //todo: assert
+    }
+    _joint = (b2RevoluteJoint*)j;
+    _hold_angle = hold_angle;
+}
+
 HolderJointProcessor::~HolderJointProcessor() {
     _joint->EnableMotor(false);
 }
@@ -84,4 +92,13 @@ void HolderJointProcessor::Pressets::human_leg_fast_tense(HolderJointProcessor& 
 
     hjp.deadzone_epsilon(0.01f);
     hjp.deadzone_acceleration_factor(1.f);
+}
+
+void HolderJointProcessor::Pressets::human_shin_superweak(HolderJointProcessor& hjp) {
+    hjp.max_speed (10.f);
+    hjp.max_torque(0.3f);
+    hjp.acceleration(140.f);
+
+    hjp.deadzone_epsilon(0.25f);
+    hjp.deadzone_acceleration_factor(4.f);
 }
