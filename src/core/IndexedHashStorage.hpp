@@ -7,16 +7,16 @@ template <typename K, typename V>
 class IndexedHashStorage {
     static_assert(!std::is_integral_v<K>, "Key can't be integer");
 public:
-    bool emplace_back(K&& key, V&& value) {
+    bool emplace_back(const K& key, const V& value) {
         auto found = _hmap.find(key);
 
         if (found == _hmap.end()) {
-            _vec.push_back(std::move(key));
-            _hmap.emplace(_vec.back(), ValueT(std::move(value), _vec.size() - 1));
+            _vec.push_back(key);
+            _hmap.emplace(_vec.back(), ValueT(value, _vec.size() - 1));
             return true;
         }
         else {
-            found->second.value = std::move(value);
+            found->second.value = value;
             return false;
         }
     }
@@ -196,7 +196,7 @@ protected:
 
 protected:
     struct ValueT {
-        ValueT(V&& val, size_t ind): value(std::move(val)), index(ind) {}
+        ValueT(const V& val, size_t ind): value(val), index(ind) {}
         ValueT() = default;
 
         V      value;
