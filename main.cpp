@@ -51,16 +51,16 @@ void Engine::mainCreate() {
 
     static auto physics_callback = [wnd, camera](PhysicSimulation& it) {
         if (auto human = last_body.lock()) {
-            if (auto arm_l = human->joint_processor_cast_get<HolderJointProcessor>("arm_l").lock()) {
-                auto cursor_pos = wnd->getMouseCoords(*camera);
-                auto joint_pos  = human->joint_position(PhysicHumanBody::BodyJoint_Chest_ArmL);
-                auto dir = (cursor_pos - joint_pos).normalize();
-                auto chest_angle = human->part_angle(PhysicHumanBody::BodyPartChest);
-
-                arm_l->set_hold_angle_if_valid(
-                        math::angle::constraint(
-                                std::atan2(dir.x(), -dir.y()) - chest_angle) - math::angle::radian(17.f));
-            }
+            //if (auto arm_l = human->joint_processor_cast_get<HolderJointProcessor>("arm_l").lock()) {
+            //    auto cursor_pos = wnd->getMouseCoords(*camera);
+            //    auto joint_pos  = human->joint_position(PhysicHumanBody::BodyJoint_Chest_ArmL);
+            //    auto dir = (cursor_pos - joint_pos).normalize();
+            //    auto chest_angle = human->part_angle(PhysicHumanBody::BodyPartChest);
+//
+            //    arm_l->set_hold_angle_if_valid(
+            //            math::angle::constraint(
+            //                    std::atan2(dir.x(), -dir.y()) - chest_angle) - math::angle::radian(17.f));
+            //}
         }
     };
 
@@ -165,53 +165,46 @@ void Engine::mainCreate() {
 
                 shot_shape = cam.hud()->drawable_manager()->create<sf::ConvexShape>();
                 shot_shape->setPointCount(4);
+                b2Joint* j;
             }
             else if (evt.mouseButton.button == sf::Mouse::Right) {
                 auto pos = wnd.getMouseCoords(cam);
                 last_body = physic_simulation->createHumanBody(pos, human_height, 80.f);
                 last_body.lock()->makeMirror();
 
-                MotionInterfaces::HumanRun::apply(*last_body.lock());
-                MotionInterfaces::HumanRun::set_thigh_limits(*last_body.lock(), -0.8f, 1.8f);
+                auto& human = *last_body.lock();
 
-//                for (int i = 0; i < PhysicHumanBody::BodyJoint_COUNT; ++i)
-//                    last_body.lock()->freeze(PhysicHumanBody::BodyJoint(i));
-//
-//                auto jp = last_body.lock()->joint_processor_new<HolderJointProcessor>("arm_l", PhysicHumanBody::BodyJoint_Chest_ArmL);
-//                HolderJointProcessor::Pressets::human_hand_fast_tense(*jp.lock());
-//                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_Chest_ArmL);
-//
-//                auto jp2 = last_body.lock()->joint_processor_new<HolderJointProcessor>("hand_l", PhysicHumanBody::BodyJoint_ArmL_HandL, math::angle::radian(24.f));
-//                HolderJointProcessor::Pressets::human_hand_fast_tense(*jp2.lock());
-//                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_ArmL_HandL);
+                auto pc = motion_interface::PeriodicCounter(last_body, "counter");
+                pc.set_period(0.5);
 
-                /*
-                auto jp3 = last_body.lock()->joint_processor_new<RepeaterJointProcessor>("thigh_l", PhysicHumanBody::BodyJoint_Chest_ThighL, -0.1, 0.3);
-                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_Chest_ThighL);
-                jp3.lock()->max_speed(1.f);
-                jp3.lock()->max_torque(10.f);
-                //jp3.lock()->change_dir_release_epsilon(0.4f);
+                auto jp1n = motion_interface::AnimatedJoint(last_body, "animated_leg_r", PhysicHumanBody::BodyJoint_Chest_ThighR, "counter")
+                    .set_frames({{0.0, -0.3f}, {0.5, 0.6f}})
+                    .n_joint_processor();
 
-                auto jp4 = last_body.lock()->joint_processor_new<RepeaterJointProcessor>("thigh_r", PhysicHumanBody::BodyJoint_Chest_ThighR, -0.1, 0.3);
-                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_Chest_ThighR);
-                jp4.lock()->max_speed(1.f);
-                jp4.lock()->max_torque(10.f);
-                jp4.lock()->change_sign();
+                auto jp2n = motion_interface::AnimatedJoint(last_body, "animated_leg_l", PhysicHumanBody::BodyJoint_Chest_ThighL, "counter")
+                    .set_frames({{0.0, -0.3}, {0.5, 0.6}})
+                    .set_shift(0.5)
+                    .n_joint_processor();
 
-                //jp4.lock()->change_dir_release_epsilon(0.4f);
-                auto jp5 = last_body.lock()->joint_processor_new<RepeaterJointProcessor>("shin_l", PhysicHumanBody::BodyJoint_ThighL_ShinL, -0.9, 0.0);
-                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_ThighL_ShinL);
-                jp5.lock()->max_speed(5.f);
-                jp5.lock()->max_torque(10.f);
-                jp5.lock()->change_sign();
-                //jp3.lock()->change_dir_release_epsilon(0.4f);
+                auto jp1 = human.joint_processor_cast_get<HolderJointProcessor>(jp1n);
+                auto jp2 = human.joint_processor_cast_get<HolderJointProcessor>(jp2n);
+                HolderJointProcessor::Pressets::human_leg_fast_tense(*jp1.lock());
+                HolderJointProcessor::Pressets::human_leg_fast_tense(*jp2.lock());
 
-                auto jp6 = last_body.lock()->joint_processor_new<RepeaterJointProcessor>("shin_r", PhysicHumanBody::BodyJoint_ThighR_ShinR, -0.9, 0.0);
-                last_body.lock()->unfreeze(PhysicHumanBody::BodyJoint_ThighR_ShinR);
-                jp6.lock()->max_speed(5.f);
-                jp6.lock()->max_torque(10.f);
-                 */
+                auto shin_l = human.joint_processor_new<HolderJointProcessor>("shin_l", PhysicHumanBody::BodyJoint_ThighL_ShinL);
+                auto shin_r = human.joint_processor_new<HolderJointProcessor>("shin_r", PhysicHumanBody::BodyJoint_ThighR_ShinR);
+                HolderJointProcessor::Pressets::human_shin_superweak(*shin_l.lock());
+                HolderJointProcessor::Pressets::human_shin_superweak(*shin_r.lock());
 
+                auto arm_l = human.joint_processor_new<HolderJointProcessor>("arm_l", PhysicHumanBody::BodyJoint_Chest_ArmL, 1.4f);
+                auto arm_r = human.joint_processor_new<HolderJointProcessor>("arm_r", PhysicHumanBody::BodyJoint_Chest_ArmR, 1.4f);
+                auto hand_l = human.joint_processor_new<HolderJointProcessor>("hand_l", PhysicHumanBody::BodyJoint_ArmL_HandL);
+                auto hand_r = human.joint_processor_new<HolderJointProcessor>("hand_r", PhysicHumanBody::BodyJoint_ArmR_HandR);
+
+                HolderJointProcessor::Pressets::human_hand_fast_tense(*arm_l.lock());
+                HolderJointProcessor::Pressets::human_hand_fast_tense(*arm_r.lock());
+                HolderJointProcessor::Pressets::human_hand_fast_tense(*hand_l.lock());
+                HolderJointProcessor::Pressets::human_hand_fast_tense(*hand_r.lock());
             }
             else if (evt.mouseButton.button == sf::Mouse::Middle) {
                 if (auto human = last_body.lock()) {
